@@ -36,8 +36,11 @@ export function Navbar() {
       <div className="container mx-auto px-4 md:px-8 grid grid-cols-2 lg:grid-cols-3 items-center">
         {/* Left side: Contact Agent */}
         <div className="hidden lg:flex items-center justify-start gap-3">
-          <Button variant={isScrolled ? "ghost" : "secondary"} className="font-medium">
-            Contact Agent
+          <Button asChild variant={isScrolled ? "ghost" : "secondary"} className="font-medium">
+            <Link href="/agents">Contact Agent</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="font-medium text-primary border-primary/30 hover:bg-primary/5">
+            <Link href="/listings/new">List Property</Link>
           </Button>
         </div>
 
@@ -55,13 +58,15 @@ export function Navbar() {
 
         {/* Right side: Actions */}
         <div className="hidden lg:flex items-center justify-end gap-3">
-          <Button variant="default" className="bg-accent hover:bg-accent/90 text-white border-0 font-medium">
-            Book Free Valuation
+          <Button asChild variant="default" className="bg-accent hover:bg-accent/90 text-white border-0 font-medium">
+            <Link href="/valuation">Book Free Valuation</Link>
           </Button>
           <div className="h-6 w-px bg-border mx-2" />
-          <Button variant="default" className="bg-primary hover:bg-secondary text-white rounded-full px-6 font-medium">
-            <User className="w-4 h-4 mr-2" />
-            Login / Signup
+          <Button asChild variant="default" className="bg-primary hover:bg-secondary text-white rounded-full px-6 font-medium">
+            <Link href="/auth">
+              <User className="w-4 h-4 mr-2" />
+              Login / Signup
+            </Link>
           </Button>
         </div>
 
