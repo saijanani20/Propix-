@@ -1,5 +1,5 @@
-﻿"use client";
-import { useState, useMemo } from "react";
+"use client";
+import { useState, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 const SORT_OPTIONS = ["Recommended", "Newest", "Price: Low to High", "Price: High to Low"];
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const [mobileFilters, setMobileFilters] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -195,5 +195,13 @@ export default function SearchPage() {
       </main>
       <Footer />
     </>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen pt-20 text-center">Loading search...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }
