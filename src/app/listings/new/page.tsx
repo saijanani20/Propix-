@@ -1,440 +1,237 @@
 "use client";
-
-import { useState, useRef } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Upload, X, Home, MapPin, BedDouble, Bath, Ruler,
-  DollarSign, FileText, ChevronLeft, CheckCircle2, Image as ImageIcon
-} from "lucide-react";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { FormStepper } from "@/components/shared/FormStepper";
+import { FileUploadZone } from "@/components/shared/FileUploadZone";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { CheckCircle2, Home, MapPin, Camera, FileText, ClipboardList, DollarSign, ChevronLeft, ShieldCheck, Clock, Eye, Building2 } from "lucide-react";
+import { PROPERTY_TYPES_OPTIONS, DISTRICTS, CITIES } from "@/lib/data";
 
-const PROPERTY_TYPES = ["House", "Apartment", "Villa", "Land", "Commercial", "Condominium"];
-const LOCATIONS = [
-  "Borella", "Homagama", "Kadawatha", "Kottawa",
-  "W4 (Wellawatta 4)", "Dehiwela", "Panadura",
-  "Kiribathgoda", "Dematogoda", "W3 (Wellawatta 3)",
+const STEPS = [
+  { n: 1, label: "Basic Info",         description: "Title, type, price" },
+  { n: 2, label: "Property Details",   description: "Size, beds, baths" },
+  { n: 3, label: "Location",           description: "Province, city" },
+  { n: 4, label: "Photos",             description: "Upload images" },
+  { n: 5, label: "Documents",          description: "Verification docs" },
+  { n: 6, label: "Review & Submit",    description: "Final check" },
 ];
-const AMENITIES = [
-  "Swimming Pool", "Gym", "Security 24/7", "Parking",
-  "Garden", "Air Conditioning", "Solar Panels", "CCTV",
-  "Water Backup", "Generator", "Elevator", "Balcony",
-];
+
+const CONDITIONS = ["Brand New", "Semi-New (0-5 yrs)", "Good Condition (5-15 yrs)", "Needs Renovation", "Land Only"];
+const PROVINCES = ["Western", "Central", "Southern", "Northern", "Eastern", "North Western", "North Central", "Uva", "Sabaragamuwa"];
 
 export default function NewListingPage() {
-  const [images, setImages] = useState<string[]>([]);
-  const [dragging, setDragging] = useState(false);
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
 
-  const toggleAmenity = (a: string) =>
-    setSelectedAmenities((prev) =>
-      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
-    );
+  // Step 1 — Basic Info
+  const [s1, setS1] = useState({ title: "", category: "house", listingType: "sale", price: "", description: "" });
+  // Step 2 — Details
+  const [s2, setS2] = useState({ landSize: "", buildingSize: "", beds: "3", baths: "2", parking: "1", condition: "Good Condition (5-15 yrs)" });
+  // Step 3 — Location
+  const [s3, setS3] = useState({ province: "Western", district: "Colombo", city: "Colombo 7", address: "" });
+  // Step 4 — Photos
+  const [photos, setPhotos] = useState<any[]>([]);
+  // Step 5 — Documents
+  const [docs, setDocs] = useState<any[]>([]);
 
-  const handleImageDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    files.forEach((file) => {
-      if (file.type.startsWith("image/")) {
-        const url = URL.createObjectURL(file);
-        setImages((prev) => [...prev, url]);
-      }
-    });
+  const handleSubmit = async () => {
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 1500));
+    setSubmitted(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    files.forEach((file) => {
-      const url = URL.createObjectURL(file);
-      setImages((prev) => [...prev, url]);
-    });
-  };
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="max-w-md w-full text-center space-y-6">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Listing Submitted!</h2>
-          <p className="text-slate-500">
-            Your property has been submitted for review. Our team will verify the details and publish it within 24 hours.
-          </p>
-          <div className="flex flex-col gap-3">
-            <Button asChild className="bg-primary hover:bg-secondary text-white rounded-xl h-12">
-              <Link href="/dashboard/seller">Go to My Dashboard</Link>
-            </Button>
-            <Button asChild variant="outline" className="rounded-xl h-12">
-              <Link href="/listings/new">List Another Property</Link>
-            </Button>
-          </div>
+  if (submitted) return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-6">
+      <div className="max-w-md w-full text-center bg-white rounded-2xl p-10 shadow-xl border border-border space-y-6">
+        <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+          <Clock className="w-10 h-10 text-amber-600" />
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-40">
-        <div className="container mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl">P</div>
-              <span className="font-bold text-xl uppercase tracking-wider text-primary hidden sm:block">PROPIX</span>
-            </Link>
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-600 font-medium">List Your Property</span>
-          </div>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/dashboard/buyer">
-              <ChevronLeft className="w-4 h-4 mr-1" /> Back to Dashboard
-            </Link>
-          </Button>
+        <div>
+          <h2 className="text-2xl font-bold text-foreground font-heading">Listing Submitted!</h2>
+          <p className="text-muted-foreground mt-2 leading-relaxed text-sm">Your property has been submitted for administrative review. Our team will verify the details within <strong>24 hours</strong>.</p>
         </div>
-      </header>
-
-      <div className="container mx-auto px-4 md:px-8 py-10 max-w-4xl">
-        {/* Step Indicator */}
-        <div className="flex items-center gap-2 mb-10">
-          {[
-            { n: 1, label: "Property Details" },
-            { n: 2, label: "Photos & Media" },
-            { n: 3, label: "Pricing & Contact" },
-          ].map((s, i) => (
-            <div key={s.n} className="flex items-center gap-2 flex-1">
-              <button
-                onClick={() => setStep(s.n)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-all ${
-                  step >= s.n
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-slate-200 text-slate-500"
-                }`}
-              >
-                {s.n}
-              </button>
-              <span className={`text-sm font-medium hidden sm:block ${step >= s.n ? "text-primary" : "text-slate-400"}`}>
-                {s.label}
-              </span>
-              {i < 2 && <div className={`flex-1 h-px ${step > s.n ? "bg-primary" : "bg-slate-200"}`} />}
-            </div>
-          ))}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-left">
+          <div className="flex items-center gap-2 mb-2"><Clock className="w-4 h-4 text-amber-600"/><p className="font-bold text-amber-800 text-sm">Current Status</p></div>
+          <StatusBadge status="pending" />
+          <p className="text-xs text-amber-700 mt-2">Once approved, your property will be publicly listed on PROPIX.</p>
         </div>
-
-        {/* Step 1 — Property Details */}
-        {step === 1 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Property Details</h1>
-              <p className="text-slate-500 mt-1">Tell buyers about your property.</p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-border space-y-6">
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Listing Title *</label>
-                <div className="relative">
-                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input placeholder="e.g. Luxury 3-Bedroom House in Borella" className="pl-10 h-12" required />
-                </div>
-              </div>
-
-              {/* Type + Location */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Property Type *</label>
-                  <div className="relative">
-                    <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
-                    <Select>
-                      <SelectTrigger className="pl-10 h-12">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PROPERTY_TYPES.map((t) => (
-                          <SelectItem key={t} value={t.toLowerCase()}>{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Location *</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
-                    <Select>
-                      <SelectTrigger className="pl-10 h-12">
-                        <SelectValue placeholder="Select area" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LOCATIONS.map((l) => (
-                          <SelectItem key={l} value={l.toLowerCase().replace(/\s+/g, "_")}>{l}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Full Address */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Full Address</label>
-                <Input placeholder="Street address, number, etc." className="h-12" />
-              </div>
-
-              {/* Beds, Baths, Size */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Bedrooms</label>
-                  <div className="relative">
-                    <BedDouble className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input type="number" min={0} placeholder="0" className="pl-10 h-12" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Bathrooms</label>
-                  <div className="relative">
-                    <Bath className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input type="number" min={0} placeholder="0" className="pl-10 h-12" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Size (sq ft)</label>
-                  <div className="relative">
-                    <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input type="number" min={0} placeholder="0" className="pl-10 h-12" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Description *</label>
-                <textarea
-                  rows={4}
-                  placeholder="Describe the property, key features, nearby landmarks, etc."
-                  className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-
-              {/* Amenities */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3">Amenities</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {AMENITIES.map((a) => (
-                    <button
-                      key={a}
-                      type="button"
-                      onClick={() => toggleAmenity(a)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm transition-all text-left ${
-                        selectedAmenities.includes(a)
-                          ? "border-primary bg-primary/5 text-primary font-semibold"
-                          : "border-border bg-white text-slate-500 hover:border-slate-300"
-                      }`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${selectedAmenities.includes(a) ? "bg-primary" : "bg-slate-300"}`} />
-                      {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button onClick={() => setStep(2)} className="h-12 px-8 bg-primary hover:bg-secondary text-white rounded-xl font-semibold">
-                Next: Upload Photos →
-              </Button>
-            </div>
+        {docs.length > 0 && (
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0"/>
+            <p className="text-xs text-emerald-700">{docs.length} confidential document{docs.length > 1 ? "s" : ""} securely received.</p>
           </div>
         )}
-
-        {/* Step 2 — Photos */}
-        {step === 2 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Photos & Media</h2>
-              <p className="text-slate-500 mt-1">Upload high-quality photos to attract more buyers. (Max 20 photos)</p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-border space-y-6">
-              {/* Drop Zone */}
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={handleImageDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${
-                  dragging
-                    ? "border-primary bg-primary/5 scale-[1.01]"
-                    : "border-slate-200 hover:border-primary hover:bg-slate-50"
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center">
-                    <Upload className="w-7 h-7 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-700">Drag & drop photos here</p>
-                    <p className="text-sm text-slate-400 mt-1">or <span className="text-primary font-medium">click to browse</span> from your computer</p>
-                  </div>
-                  <p className="text-xs text-slate-400">JPG, PNG, WEBP — up to 10MB each</p>
-                </div>
-              </div>
-
-              {/* Image Previews */}
-              {images.length > 0 && (
-                <div>
-                  <p className="text-sm font-semibold text-slate-700 mb-3">{images.length} photo{images.length > 1 ? "s" : ""} uploaded</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {images.map((img, i) => (
-                      <div key={i} className="relative group rounded-xl overflow-hidden aspect-square bg-slate-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={img} alt={`upload-${i}`} className="w-full h-full object-cover" />
-                        {i === 0 && (
-                          <span className="absolute top-2 left-2 bg-primary text-white text-xs px-2 py-0.5 rounded-full font-medium">
-                            Cover
-                          </span>
-                        )}
-                        <button
-                          onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                          className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="aspect-square rounded-xl border-2 border-dashed border-slate-200 hover:border-primary flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-primary transition-colors"
-                    >
-                      <ImageIcon className="w-6 h-6" />
-                      <span className="text-xs font-medium">Add More</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-between">
-              <Button onClick={() => setStep(1)} variant="outline" className="h-12 px-6 rounded-xl">
-                ← Back
-              </Button>
-              <Button onClick={() => setStep(3)} className="h-12 px-8 bg-primary hover:bg-secondary text-white rounded-xl font-semibold">
-                Next: Pricing →
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3 — Pricing & Contact */}
-        {step === 3 && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Pricing & Contact</h2>
-              <p className="text-slate-500 mt-1">Set your price and how buyers can reach you.</p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-border space-y-6">
-              {/* Listing Type */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Listing Type *</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {["For Sale", "For Rent"].map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      className="py-3 rounded-xl border-2 border-border hover:border-primary font-semibold text-slate-600 hover:text-primary transition-all"
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Price */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Asking Price (LKR) *</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <Input type="number" placeholder="e.g. 25000000" className="pl-10 h-12" />
-                </div>
-                <p className="text-xs text-slate-400 mt-1">Enter the full amount in Sri Lankan Rupees (LKR)</p>
-              </div>
-
-              {/* Negotiable */}
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 accent-primary" />
-                <span className="text-sm text-slate-600 font-medium">Price is negotiable</span>
-              </label>
-
-              {/* Divider */}
-              <hr className="border-slate-100" />
-
-              {/* Contact Details */}
-              <div>
-                <h3 className="font-semibold text-slate-800 mb-4">Your Contact Information</h3>
-                <div className="space-y-4">
-                  <Input placeholder="Full Name *" className="h-12" />
-                  <Input type="email" placeholder="Email Address *" className="h-12" />
-                  <Input type="tel" placeholder="Phone Number *" className="h-12" />
-                </div>
-              </div>
-
-              {/* Preferred contact method */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred Contact Method</label>
-                <div className="flex flex-wrap gap-2">
-                  {["Phone Call", "WhatsApp", "Email"].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      className="px-4 py-2 rounded-full border-2 border-border hover:border-primary text-sm font-medium text-slate-600 hover:text-primary transition-all"
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Terms */}
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" required className="mt-1 accent-primary" />
-                <span className="text-sm text-slate-500">
-                  I confirm that all information provided is accurate and I agree to Propix&apos;s{" "}
-                  <Link href="/terms" className="text-primary hover:underline">Listing Terms</Link>.
-                </span>
-              </label>
-            </div>
-
-            <div className="flex justify-between">
-              <Button onClick={() => setStep(2)} variant="outline" className="h-12 px-6 rounded-xl">
-                ← Back
-              </Button>
-              <Button
-                onClick={() => setSubmitted(true)}
-                className="h-12 px-10 bg-accent hover:bg-accent/90 text-white rounded-xl font-bold text-base shadow-lg"
-              >
-                Submit Listing 🚀
-              </Button>
-            </div>
-          </div>
-        )}
+        <div className="flex flex-col gap-3">
+          <Link href="/dashboard/seller"><Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-11">Go to My Dashboard</Button></Link>
+          <Button variant="outline" className="w-full rounded-xl h-11" onClick={() => { setStep(1); setSubmitted(false); setPhotos([]); setDocs([]); }}>List Another Property</Button>
+        </div>
       </div>
     </div>
+  );
+
+  const inp = "w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-muted/30";
+  const sel = "w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white appearance-none";
+  const lbl = "text-xs font-bold text-foreground uppercase tracking-wider mb-2 block";
+
+  return (
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-muted/30 pt-16">
+        <header className="bg-white border-b border-border sticky top-16 z-30">
+          <div className="container mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link href="/dashboard/seller"><Button variant="ghost" size="sm" className="gap-1.5"><ChevronLeft className="w-4 h-4"/>Back</Button></Link>
+              <span className="text-foreground font-semibold hidden sm:block">List Your Property</span>
+            </div>
+            <StatusBadge status="draft" />
+          </div>
+        </header>
+
+        <div className="container mx-auto px-4 md:px-6 py-8 max-w-3xl">
+          <div className="mb-10">
+            <FormStepper steps={STEPS} currentStep={step} onStepClick={(n) => n < step && setStep(n)} />
+          </div>
+
+          {/* Step 1 — Basic Info */}
+          {step === 1 && (
+            <div className="bg-white rounded-xl border border-border p-6 md:p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Home className="w-5 h-5 text-primary"/></div><div><h2 className="font-bold text-foreground text-xl font-heading">Basic Information</h2><p className="text-sm text-muted-foreground">Tell us about your property</p></div></div>
+              <div><label className={lbl}>Listing Title *</label><input value={s1.title} onChange={e => setS1({...s1, title: e.target.value})} placeholder="e.g. Luxury 4-Bedroom House in Colombo 7" className={inp}/></div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div><label className={lbl}>Property Type *</label><select value={s1.category} onChange={e => setS1({...s1, category: e.target.value})} className={sel}>{PROPERTY_TYPES_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
+                <div><label className={lbl}>Listing Type *</label>
+                  <div className="flex gap-2">
+                    {[["sale","For Sale"],["rent","For Rent"]].map(([v,l]) => (
+                      <button key={v} type="button" onClick={() => setS1({...s1, listingType: v})} className={`flex-1 py-2.5 text-sm font-semibold rounded-xl border-2 transition-all ${s1.listingType === v ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div><label className={lbl}>Asking Price (LKR) *</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">LKR</span><input type="number" value={s1.price} onChange={e => setS1({...s1, price: e.target.value})} placeholder="e.g. 25000000" className={`${inp} pl-14`}/></div><p className="text-xs text-muted-foreground mt-1">Enter the full amount in Sri Lankan Rupees</p></div>
+              <div><label className={lbl}>Description *</label><textarea rows={5} value={s1.description} onChange={e => setS1({...s1, description: e.target.value})} placeholder="Describe your property — key features, unique selling points, nearby landmarks, condition..." className={`${inp} resize-none`}/></div>
+              <Button onClick={() => setStep(2)} disabled={!s1.title || !s1.price || !s1.description} className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold">Next: Property Details →</Button>
+            </div>
+          )}
+
+          {/* Step 2 — Property Details */}
+          {step === 2 && (
+            <div className="bg-white rounded-xl border border-border p-6 md:p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Building2 className="w-5 h-5 text-primary"/></div><div><h2 className="font-bold text-foreground text-xl font-heading">Property Details</h2><p className="text-sm text-muted-foreground">Measurements and specifications</p></div></div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div><label className={lbl}>Land Size (Perches)</label><input type="number" value={s2.landSize} onChange={e => setS2({...s2, landSize: e.target.value})} placeholder="e.g. 20" className={inp}/></div>
+                <div><label className={lbl}>Building Size (Sq Ft)</label><input type="number" value={s2.buildingSize} onChange={e => setS2({...s2, buildingSize: e.target.value})} placeholder="e.g. 2400" className={inp}/></div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div><label className={lbl}>Bedrooms</label><select value={s2.beds} onChange={e => setS2({...s2, beds: e.target.value})} className={sel}>{["0","1","2","3","4","5","6+"].map(n => <option key={n}>{n}</option>)}</select></div>
+                <div><label className={lbl}>Bathrooms</label><select value={s2.baths} onChange={e => setS2({...s2, baths: e.target.value})} className={sel}>{["0","1","2","3","4","5+"].map(n => <option key={n}>{n}</option>)}</select></div>
+                <div><label className={lbl}>Parking</label><select value={s2.parking} onChange={e => setS2({...s2, parking: e.target.value})} className={sel}>{["0","1","2","3","4+"].map(n => <option key={n}>{n}</option>)}</select></div>
+              </div>
+              <div><label className={lbl}>Property Condition</label><select value={s2.condition} onChange={e => setS2({...s2, condition: e.target.value})} className={sel}>{CONDITIONS.map(c => <option key={c}>{c}</option>)}</select></div>
+              <div className="flex gap-3"><Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11 rounded-xl">← Back</Button><Button onClick={() => setStep(3)} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold">Next: Location →</Button></div>
+            </div>
+          )}
+
+          {/* Step 3 — Location */}
+          {step === 3 && (
+            <div className="bg-white rounded-xl border border-border p-6 md:p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><MapPin className="w-5 h-5 text-primary"/></div><div><h2 className="font-bold text-foreground text-xl font-heading">Location Details</h2><p className="text-sm text-muted-foreground">Where is your property?</p></div></div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div><label className={lbl}>Province *</label><select value={s3.province} onChange={e => setS3({...s3, province: e.target.value})} className={sel}>{PROVINCES.map(p => <option key={p}>{p}</option>)}</select></div>
+                <div><label className={lbl}>District *</label><select value={s3.district} onChange={e => setS3({...s3, district: e.target.value})} className={sel}>{DISTRICTS.map(d => <option key={d}>{d}</option>)}</select></div>
+              </div>
+              <div><label className={lbl}>City / Area *</label><select value={s3.city} onChange={e => setS3({...s3, city: e.target.value})} className={sel}>{(CITIES[s3.district] ?? [s3.district]).map(c => <option key={c}>{c}</option>)}</select></div>
+              <div><label className={lbl}>Full Address *</label><input value={s3.address} onChange={e => setS3({...s3, address: e.target.value})} placeholder="Street number, street name, landmarks..." className={inp}/></div>
+              {/* Map placeholder */}
+              <div className="rounded-xl border border-border overflow-hidden bg-muted/50 h-48 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <MapPin className="w-8 h-8 text-primary/40"/>
+                <p className="text-sm font-medium">Map Location</p>
+                <p className="text-xs text-center max-w-xs">In the full version, drag the pin to set your exact property location on the map.</p>
+                <div className="mt-1 px-3 py-1.5 bg-primary/10 rounded-full text-xs text-primary font-medium">📍 {s3.city}, {s3.district}</div>
+              </div>
+              <div className="flex gap-3"><Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-11 rounded-xl">← Back</Button><Button onClick={() => setStep(4)} disabled={!s3.address} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold">Next: Photos →</Button></div>
+            </div>
+          )}
+
+          {/* Step 4 — Photos */}
+          {step === 4 && (
+            <div className="bg-white rounded-xl border border-border p-6 md:p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Camera className="w-5 h-5 text-primary"/></div><div><h2 className="font-bold text-foreground text-xl font-heading">Property Photos</h2><p className="text-sm text-muted-foreground">Upload high-quality images (max 20)</p></div></div>
+              <FileUploadZone accept=".jpg,.jpeg,.png,.webp" multiple imagePreview files={photos} onChange={setPhotos} label="Drag & drop photos here" hint="or click to browse — JPG, PNG, WEBP up to 10MB each" />
+              <div className="flex gap-3"><Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11 rounded-xl">← Back</Button><Button onClick={() => setStep(5)} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold">Next: Documents →</Button></div>
+            </div>
+          )}
+
+          {/* Step 5 — Documents */}
+          {step === 5 && (
+            <div className="bg-white rounded-xl border border-border p-6 md:p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center"><FileText className="w-5 h-5 text-amber-600"/></div><div><h2 className="font-bold text-foreground text-xl font-heading">Verification Documents</h2><p className="text-sm text-muted-foreground">Confidential — for admin verification only</p></div></div>
+              <FileUploadZone accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple confidential files={docs} onChange={setDocs} label="Drop documents here (Deed, Survey Plan, etc.)" hint="PDF, DOC, JPG accepted — max 20MB each" />
+              <div className="bg-muted/50 rounded-xl p-4 border border-border">
+                <p className="text-xs font-bold text-foreground mb-2">Recommended Documents</p>
+                <ul className="space-y-1.5 text-xs text-muted-foreground list-disc list-inside">
+                  <li>Title Deed (mandatory for verification)</li>
+                  <li>Survey Plan / Land Registry Document</li>
+                  <li>Building Permit (for constructed properties)</li>
+                  <li>Certificate of Conformity (COC)</li>
+                  <li>Deed of Transfer (if recently purchased)</li>
+                </ul>
+              </div>
+              <div className="flex gap-3"><Button variant="outline" onClick={() => setStep(4)} className="flex-1 h-11 rounded-xl">← Back</Button><Button onClick={() => setStep(6)} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold">Next: Review →</Button></div>
+            </div>
+          )}
+
+          {/* Step 6 — Review & Submit */}
+          {step === 6 && (
+            <div className="space-y-5">
+              <div className="bg-white rounded-xl border border-border p-6 md:p-8 shadow-sm">
+                <div className="flex items-center gap-3 mb-6"><div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><ClipboardList className="w-5 h-5 text-primary"/></div><div><h2 className="font-bold text-foreground text-xl font-heading">Review & Submit</h2><p className="text-sm text-muted-foreground">Check everything before submitting for verification</p></div></div>
+                <div className="space-y-5">
+                  <div className="bg-muted/40 rounded-xl p-5">
+                    <p className="text-xs font-bold text-foreground uppercase tracking-wider mb-3">Basic Information</p>
+                    <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                      <div><span className="text-muted-foreground">Title:</span><p className="font-medium">{s1.title || "—"}</p></div>
+                      <div><span className="text-muted-foreground">Type:</span><p className="font-medium capitalize">{s1.category} · {s1.listingType === "sale" ? "For Sale" : "For Rent"}</p></div>
+                      <div><span className="text-muted-foreground">Asking Price:</span><p className="font-bold text-primary">LKR {Number(s1.price).toLocaleString() || "—"}</p></div>
+                    </div>
+                  </div>
+                  <div className="bg-muted/40 rounded-xl p-5">
+                    <p className="text-xs font-bold text-foreground uppercase tracking-wider mb-3">Property Details</p>
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      {s2.landSize && <div><span className="text-muted-foreground">Land:</span><p className="font-medium">{s2.landSize}P</p></div>}
+                      {s2.buildingSize && <div><span className="text-muted-foreground">Building:</span><p className="font-medium">{s2.buildingSize} sqft</p></div>}
+                      <div><span className="text-muted-foreground">Beds:</span><p className="font-medium">{s2.beds}</p></div>
+                      <div><span className="text-muted-foreground">Baths:</span><p className="font-medium">{s2.baths}</p></div>
+                      <div><span className="text-muted-foreground">Condition:</span><p className="font-medium">{s2.condition}</p></div>
+                    </div>
+                  </div>
+                  <div className="bg-muted/40 rounded-xl p-5">
+                    <p className="text-xs font-bold text-foreground uppercase tracking-wider mb-3">Location</p>
+                    <p className="text-sm font-medium">{s3.address && `${s3.address}, `}{s3.city}, {s3.district}, {s3.province} Province</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-primary/5 rounded-xl p-4 text-center border border-primary/10"><p className="text-2xl font-bold text-primary">{photos.length}</p><p className="text-xs text-muted-foreground mt-1">Photos</p></div>
+                    <div className="bg-amber-50 rounded-xl p-4 text-center border border-amber-200"><p className="text-2xl font-bold text-amber-700">{docs.length}</p><p className="text-xs text-muted-foreground mt-1">Documents</p></div>
+                    <div className="bg-muted/60 rounded-xl p-4 text-center border border-border"><p className="text-2xl font-bold text-foreground">6</p><p className="text-xs text-muted-foreground mt-1">Steps Done</p></div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep(5)} className="flex-1 h-12 rounded-xl">← Back</Button>
+                <Button onClick={handleSubmit} disabled={loading} className="flex-1 h-12 bg-accent hover:bg-accent/90 text-white rounded-xl font-bold text-base">
+                  {loading ? "Submitting..." : "Submit for Verification 🚀"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <Footer />
+    </>
   );
 }

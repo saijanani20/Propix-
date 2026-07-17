@@ -1,19 +1,29 @@
-import { Navbar } from "@/components/layout/Navbar";
+﻿import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/home/Hero";
 import { FeaturedProperties } from "@/components/home/FeaturedProperties";
-import { WhyChooseUs } from "@/components/home/WhyChooseUs";
+import { HowItWorks } from "@/components/home/HowItWorks";
+import { ExploreNearYou } from "@/components/home/ExploreNearYou";
+import { SellSection } from "@/components/home/SellSection";
+import { ValuationSection } from "@/components/home/ValuationSection";
+import { FinancingSection } from "@/components/home/FinancingSection";
 import { Statistics } from "@/components/home/Statistics";
+import { WhyChooseUs } from "@/components/home/WhyChooseUs";
 
-export default function Home() {
+export default function HomePage() {
   return (
     <>
       <Navbar />
-      <main className="flex-1 flex flex-col">
+      <main>
         <Hero />
         <FeaturedProperties />
-        <WhyChooseUs />
+        <HowItWorks />
+        <ExploreNearYou />
         <Statistics />
+        <WhyChooseUs />
+        <ValuationSection />
+        <SellSection />
+        <FinancingSection />
       </main>
       <Footer />
     </>

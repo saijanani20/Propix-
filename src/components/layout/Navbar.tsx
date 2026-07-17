@@ -1,102 +1,163 @@
-"use client";
-
+﻿"use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X, Search, User } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Menu, X, ChevronDown, Home, Search, Tag, BarChart2, DollarSign, Users, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const NAV_LINKS = [
+  { label: "Buy",         href: "/search?type=sale",   icon: Home },
+  { label: "Rent",        href: "/search?type=rent",   icon: Search },
+  { label: "Sell",        href: "/listings/new",       icon: Tag },
+  { label: "Valuation",   href: "/valuation",          icon: BarChart2 },
+  { label: "Financing",   href: "/financing",          icon: DollarSign },
+  { label: "Find an Agent", href: "/agents",           icon: Users },
+];
 
 export function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<{ name: string; userType: string } | null>(null);
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const raw = localStorage.getItem("propix_user");
+    if (raw) try { setUser(JSON.parse(raw)); } catch {}
+  }, [pathname]);
+
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handler);
+    return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  const navLinks = [
-    { name: "Buy", href: "/buy" },
-    { name: "Rent", href: "/rent" },
-    { name: "Commercial", href: "/commercial" },
-    { name: "New Projects", href: "/projects" },
-    { name: "Agents", href: "/agents" },
-  ];
+  const logout = () => { localStorage.removeItem("propix_user"); setUser(null); };
+
+  const isTransparent = isHomePage && !scrolled;
 
   return (
-    <nav
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        isScrolled
-          ? "bg-white/80 backdrop-blur-md shadow-sm border-b border-border py-4"
-          : "bg-transparent py-6"
-      }`}
-    >
-      <div className="container mx-auto px-4 md:px-8 grid grid-cols-2 lg:grid-cols-3 items-center">
-        {/* Left side: Contact Agent */}
-        <div className="hidden lg:flex items-center justify-start gap-3">
-          <Button asChild variant={isScrolled ? "ghost" : "secondary"} className="font-medium">
-            <Link href="/agents">Contact Agent</Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="font-medium text-primary border-primary/30 hover:bg-primary/5">
-            <Link href="/listings/new">List Property</Link>
-          </Button>
-        </div>
+    <header className={cn(
+      "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+      isTransparent ? "bg-transparent" : "bg-white/95 backdrop-blur-md border-b border-border shadow-sm"
+    )}>
+      <div className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-4">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 shrink-0">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
+            <span className="text-white font-bold text-sm font-heading">P</span>
+          </div>
+          <span className={cn("font-bold text-xl tracking-tight font-heading hidden sm:block", isTransparent ? "text-white" : "text-primary")}>
+            PROPIX
+          </span>
+        </Link>
 
-        {/* Center Logo */}
-        <div className="flex justify-start lg:justify-center items-center">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-heading font-bold text-2xl group-hover:bg-secondary transition-colors">
-              P
-            </div>
-            <span className={`font-heading font-bold text-3xl uppercase tracking-wider ${isScrolled ? "text-foreground" : "text-foreground lg:text-white"}`}>
-              PROPIX
-            </span>
-          </Link>
-        </div>
-
-        {/* Right side: Actions */}
-        <div className="hidden lg:flex items-center justify-end gap-3">
-          <Button asChild variant="default" className="bg-accent hover:bg-accent/90 text-white border-0 font-medium">
-            <Link href="/valuation">Book Free Valuation</Link>
-          </Button>
-          <div className="h-6 w-px bg-border mx-2" />
-          <Button asChild variant="default" className="bg-primary hover:bg-secondary text-white rounded-full px-6 font-medium">
-            <Link href="/auth">
-              <User className="w-4 h-4 mr-2" />
-              Login / Signup
+        {/* Desktop Nav */}
+        <nav className="hidden lg:flex items-center gap-1">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              className={cn(
+                "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                isTransparent
+                  ? "text-white/90 hover:text-white hover:bg-white/10"
+                  : pathname.startsWith(link.href.split("?")[0]) && link.href !== "/"
+                    ? "text-primary bg-primary/8 font-semibold"
+                    : "text-foreground/80 hover:text-primary hover:bg-muted"
+              )}
+            >
+              {link.label}
             </Link>
-          </Button>
-        </div>
+          ))}
+        </nav>
 
-        {/* Mobile Toggle */}
-        <div className="flex justify-end lg:hidden">
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+          {user ? (
+            <div className="hidden lg:flex items-center gap-2">
+              <Link href={`/dashboard/${user.userType}`}>
+                <Button variant="ghost" size="sm" className={cn("gap-2", isTransparent ? "text-white hover:bg-white/10" : "")}>
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Button>
+              </Link>
+              <div className={cn("text-sm font-medium px-3 py-1.5 rounded-lg", isTransparent ? "text-white/80" : "text-muted-foreground")}>
+                {user.name.split(" ")[0]}
+              </div>
+              <Button variant="ghost" size="icon" onClick={logout} className={isTransparent ? "text-white hover:bg-white/10" : ""}>
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="hidden lg:flex items-center gap-2">
+              <Link href="/auth">
+                <Button variant="ghost" size="sm" className={cn(isTransparent ? "text-white hover:bg-white/10" : "")}>
+                  <LogIn className="w-4 h-4 mr-1.5" /> Sign In
+                </Button>
+              </Link>
+              <Link href="/auth">
+                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white font-semibold">
+                  <UserPlus className="w-4 h-4 mr-1.5" /> Create Account
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* List CTA */}
+          <Link href="/listings/new" className="hidden md:block">
+            <Button size="sm" className="bg-accent hover:bg-accent/90 text-white font-semibold ml-1">
+              List Property
+            </Button>
+          </Link>
+
+          {/* Mobile toggle */}
           <button
-            className={`p-2 rounded-md ${isScrolled ? "text-foreground" : "text-foreground md:text-white"}`}
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            onClick={() => setOpen(!open)}
+            className={cn("lg:hidden p-2 rounded-lg", isTransparent ? "text-white hover:bg-white/10" : "text-foreground hover:bg-muted")}
           >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="absolute top-full left-0 w-full bg-white border-b border-border shadow-lg py-4 px-4 flex flex-col gap-4 lg:hidden">
-          {navLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              className="text-foreground font-medium py-2 border-b border-border/50"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              {link.name}
-            </Link>
-          ))}
-          <Button className="w-full mt-4 bg-primary hover:bg-secondary text-white">Login / Register</Button>
+      {open && (
+        <div className="lg:hidden bg-white border-t border-border shadow-xl">
+          <div className="container mx-auto px-4 py-4 space-y-1">
+            {NAV_LINKS.map((link) => (
+              <Link key={link.label} href={link.href} onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-muted hover:text-primary transition-colors">
+                <link.icon className="w-4 h-4 text-primary" />
+                <span className="font-medium">{link.label}</span>
+              </Link>
+            ))}
+            <div className="pt-3 border-t border-border flex flex-col gap-2">
+              {user ? (
+                <>
+                  <Link href={`/dashboard/${user.userType}`} onClick={() => setOpen(false)}>
+                    <Button className="w-full bg-primary hover:bg-primary/90 text-white">Dashboard</Button>
+                  </Link>
+                  <Button variant="outline" className="w-full" onClick={() => { logout(); setOpen(false); }}>Sign Out</Button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth" onClick={() => setOpen(false)}>
+                    <Button variant="outline" className="w-full">Sign In</Button>
+                  </Link>
+                  <Link href="/auth" onClick={() => setOpen(false)}>
+                    <Button className="w-full bg-primary hover:bg-primary/90 text-white">Create Account</Button>
+                  </Link>
+                </>
+              )}
+              <Link href="/listings/new" onClick={() => setOpen(false)}>
+                <Button className="w-full bg-accent hover:bg-accent/90 text-white">List Your Property</Button>
+              </Link>
+            </div>
+          </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 }

@@ -1,76 +1,81 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Heart, Search, Eye, Calendar, TrendingUp } from "lucide-react";
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { getFeaturedProperties, VALUATION_REQUESTS, CONSULTATION_REQUESTS } from "@/lib/data";
+import { PropertyCard } from "@/components/property/PropertyCard";
+import { DashboardCard } from "@/components/shared/DashboardCard";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Heart, Search, Calendar, MessageSquare, DollarSign, Bell, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function BuyerDashboard() {
+  const [user, setUser] = useState<any>(null);
+  useEffect(() => { const r = localStorage.getItem("propix_user"); if (r) setUser(JSON.parse(r)); }, []);
+  const saved = getFeaturedProperties().slice(0, 3);
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex justify-between items-end">
+    <div className="space-y-8 max-w-6xl">
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-heading text-slate-900 mb-2">Buyer Dashboard</h1>
-          <p className="text-slate-500">Welcome back! Here is your property activity overview.</p>
+          <h1 className="text-2xl font-bold text-foreground font-heading">Welcome, {user?.name?.split(" ")[0] ?? "Buyer"} 👋</h1>
+          <p className="text-muted-foreground mt-1">Find your dream property and track your inquiries here.</p>
         </div>
-        <Button className="bg-primary hover:bg-secondary">
-          Continue Search
-        </Button>
+        <Link href="/search"><Button className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"><Search className="w-4 h-4"/>Search Properties</Button></Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">Saved Properties</CardTitle>
-            <Heart className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">12</div>
-            <p className="text-xs text-success flex items-center mt-1">
-              <TrendingUp className="w-3 h-3 mr-1" /> +2 this week
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">Recently Viewed</CardTitle>
-            <Eye className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">45</div>
-            <p className="text-xs text-slate-500 mt-1">Across 3 locations</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">AI Recommendations</CardTitle>
-            <Search className="w-4 h-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">8</div>
-            <p className="text-xs text-slate-500 mt-1">New matches today</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">Viewings</CardTitle>
-            <Calendar className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">2</div>
-            <p className="text-xs text-slate-500 mt-1">Scheduled for this week</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <DashboardCard title="Saved Properties" value={saved.length} icon={Heart} color="red" />
+        <DashboardCard title="Viewing Requests" value={2} icon={Calendar} color="blue" subtitle="1 scheduled" />
+        <DashboardCard title="Active Inquiries" value={4} icon={MessageSquare} color="green" trend={{ value: "+2 this week", positive: true }} />
+        <DashboardCard title="Financing Status" value="Active" icon={DollarSign} color="sand" subtitle="Under review" />
       </div>
 
-      {/* Placeholders for larger dashboard widgets */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="border-border h-96 flex items-center justify-center bg-slate-50/50">
-          <p className="text-slate-500 font-medium">Personalized AI Property Recommendations will appear here</p>
-        </Card>
-        <Card className="border-border h-96 flex items-center justify-center bg-slate-50/50">
-          <p className="text-slate-500 font-medium">Mortgage Tracker & Financial Eligibility</p>
-        </Card>
+      {/* Saved Properties */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-foreground text-xl font-heading">Saved Properties</h2>
+          <Link href="/search" className="text-sm text-primary font-semibold flex items-center gap-1 hover:gap-2 transition-all">Browse More<ArrowRight className="w-4 h-4"/></Link>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-5">
+          {saved.map(p => <PropertyCard key={p.id} property={p} />)}
+        </div>
+      </div>
+
+      {/* Consultations */}
+      <div className="bg-white rounded-xl border border-border shadow-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="font-bold text-foreground font-heading">My Consultations</h2>
+          <Link href="/consultation" className="text-sm text-primary font-semibold">Book New</Link>
+        </div>
+        <div className="divide-y divide-border">
+          {CONSULTATION_REQUESTS.slice(0, 3).map(c => (
+            <div key={c.id} className="flex items-center justify-between px-5 py-4 hover:bg-muted/20 transition-colors">
+              <div>
+                <p className="font-medium text-foreground text-sm">{c.propertyTitle}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 capitalize">{c.consultationType} consultation · {c.requestedAt}</p>
+                {c.scheduledDate && <p className="text-xs text-primary mt-0.5 font-medium">Scheduled: {c.scheduledDate}</p>}
+              </div>
+              <StatusBadge status={c.status as any} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div className="grid sm:grid-cols-3 gap-4">
+        {[
+          { icon: Search, label: "Search Properties", sub: "Browse all listings", href: "/search", color: "bg-primary/10 text-primary" },
+          { icon: DollarSign, label: "Financing Options", sub: "Explore loan referrals", href: "/financing", color: "bg-secondary/20 text-secondary" },
+          { icon: Calendar, label: "Book Consultation", sub: "Talk to an expert agent", href: "/consultation", color: "bg-accent/15 text-accent" },
+        ].map((a) => (
+          <Link key={a.label} href={a.href}>
+            <div className="bg-white rounded-xl border border-border p-5 hover:shadow-md transition-all hover:border-primary/30 group">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${a.color}`}><a.icon className="w-5 h-5"/></div>
+              <p className="font-bold text-foreground group-hover:text-primary transition-colors">{a.label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{a.sub}</p>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );

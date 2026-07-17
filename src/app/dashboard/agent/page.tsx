@@ -1,26 +1,16 @@
+"use client";
 export default function AgentDashboard() {
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <h1 className="text-3xl font-bold font-heading text-slate-900 mb-2">Agent Dashboard</h1>
-      <p className="text-slate-500">Manage clients, track leads, and view performance analytics.</p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="border border-border p-6 rounded-xl bg-white shadow-sm">
-          <h3 className="font-semibold text-slate-700 mb-1">Active Leads</h3>
-          <p className="text-2xl font-bold text-primary">24</p>
-        </div>
-        <div className="border border-border p-6 rounded-xl bg-white shadow-sm">
-          <h3 className="font-semibold text-slate-700 mb-1">Appointments</h3>
-          <p className="text-2xl font-bold text-primary">8</p>
-        </div>
-        <div className="border border-border p-6 rounded-xl bg-white shadow-sm">
-          <h3 className="font-semibold text-slate-700 mb-1">Properties</h3>
-          <p className="text-2xl font-bold text-primary">15</p>
-        </div>
-        <div className="border border-border p-6 rounded-xl bg-white shadow-sm">
-          <h3 className="font-semibold text-slate-700 mb-1">Commission</h3>
-          <p className="text-2xl font-bold text-primary">LKR 1.2M</p>
-        </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-foreground font-heading">Agent Dashboard</h1>
+      <p className="text-muted-foreground">Welcome, Agent. Your client management tools are here.</p>
+      <div className="grid sm:grid-cols-3 gap-4">
+        {["Active Clients: 8","Consultations Today: 3","Properties Managed: 12"].map(s => (
+          <div key={s} className="bg-white rounded-xl border border-border p-5 shadow-sm">
+            <p className="font-semibold text-foreground">{s.split(":")[0]}</p>
+            <p className="text-3xl font-bold text-primary mt-1">{s.split(":")[1].trim()}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
