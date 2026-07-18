@@ -81,7 +81,7 @@ function LoginForm({ onSwitch }: any) {
       
       {/* Demo Login Cards */}
       <div className="bg-muted/50 rounded-xl p-4 border border-border">
-        <p className="text-xs font-bold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2"><ShieldCheck className="w-3.5 h-3.5 text-primary"/>Demo Accounts — Click to Login</p>
+        <p className="text-xs font-bold text-foreground uppercase tracking-wider mb-3 flex items-center gap-2"><ShieldCheck className="w-3.5 h-3.5 text-primary"/>Demo Accounts - Click to Login</p>
         <div className="grid grid-cols-2 gap-2">
           {DEMO_ACCOUNTS.map((acc) => (
             <button key={acc.role} type="button" onClick={() => demoLogin(acc)}
@@ -130,7 +130,7 @@ export default function AuthPage() {
             ))}
           </div>
         </div>
-        <p className="text-white/40 text-xs relative z-10">© 2025 PROPIX (Pvt) Ltd. Regulated by the EARB of Sri Lanka.</p>
+        <p className="text-white/40 text-xs relative z-10">(c) 2025 PROPIX (Pvt) Ltd. Regulated by the EARB of Sri Lanka.</p>
       </div>
       <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-muted/20">
         <div className="w-full max-w-md">
