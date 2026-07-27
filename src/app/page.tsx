@@ -1,9 +1,8 @@
-﻿import { Navbar } from "@/components/layout/Navbar";
+import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/home/Hero";
 import { FeaturedProperties } from "@/components/home/FeaturedProperties";
 import { HowItWorks } from "@/components/home/HowItWorks";
-import { ExploreNearYou } from "@/components/home/ExploreNearYou";
 import { SellSection } from "@/components/home/SellSection";
 import { ValuationSection } from "@/components/home/ValuationSection";
 import { FinancingSection } from "@/components/home/FinancingSection";
@@ -18,7 +17,6 @@ export default function HomePage() {
         <Hero />
         <FeaturedProperties />
         <HowItWorks />
-        <ExploreNearYou />
         <Statistics />
         <WhyChooseUs />
         <ValuationSection />

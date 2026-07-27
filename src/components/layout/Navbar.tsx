@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, ChevronDown, Home, Search, Tag, BarChart2, DollarSign, Users, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react";
+import { Menu, X, ChevronDown, Home, Search, Tag, BarChart2, DollarSign, Users, LogIn, UserPlus, LayoutDashboard, LogOut, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { label: "Valuation",   href: "/valuation",          icon: BarChart2 },
   { label: "Financing",   href: "/financing",          icon: DollarSign },
   { label: "Find an Agent", href: "/agents",           icon: Users },
+  { label: "Map",           href: "/map",              icon: Map },
 ];
 
 export function Navbar() {
