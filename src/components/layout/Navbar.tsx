@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { label: "Buy",         href: "/search?type=sale",   icon: Home },
-  { label: "Rent",        href: "/search?type=rent",   icon: Search },
   { label: "Sell",        href: "/listings/new",       icon: Tag },
   { label: "Valuation",   href: "/valuation",          icon: BarChart2 },
   { label: "Financing",   href: "/financing",          icon: DollarSign },

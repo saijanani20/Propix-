@@ -1,14 +1,54 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { PROPERTIES } from "@/lib/data";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Eye, MessageSquare, PlusCircle, ArrowRight } from "lucide-react";
+import { Eye, MessageSquare, PlusCircle, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { formatLKR } from "@/lib/data";
 
 export default function SellerListingsPage() {
-  const listings = PROPERTIES.filter((p) => p.sellerId === "user-seller-01");
+  const [listings, setListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  
+  useEffect(() => {
+    async function fetchListings() {
+      const supabase = createClient();
+      
+      // Get deterministic UUID for user-seller-01 (mock user logic)
+      const str = "user-seller-01";
+      let hex = '';
+      for (let i = 0; i < str.length; i++) {
+        hex += str.charCodeAt(i).toString(16);
+      }
+      hex = hex.padEnd(32, '0').slice(0, 32);
+      const sellerId = `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20,32)}`;
+      
+      const { data, error } = await supabase
+        .from("properties")
+        .select(`
+          *,
+          property_images (storage_path)
+        `)
+        .eq("seller_id", sellerId)
+        .order("created_at", { ascending: false });
+        
+      if (!error && data) {
+        setListings(data.map(d => ({
+          ...d,
+          images: d.property_images?.map((img: any) => img.storage_path) || [],
+          status: d.status === "published" ? "approved" : (d.status === "submitted" ? "pending" : d.status),
+          inquiries: d.inquiries_count || 0,
+          createdAt: new Date(d.created_at).toISOString().split('T')[0],
+          priceLabel: d.price_label || formatLKR(d.price)
+        })));
+      }
+      setLoading(false);
+    }
+    fetchListings();
+  }, []);
+
   const filtered = filter === "all" ? listings : listings.filter(p => p.status === filter);
 
   return (
@@ -26,7 +66,12 @@ export default function SellerListingsPage() {
         ))}
       </div>
       <div className="bg-white rounded-xl border border-border shadow-sm divide-y divide-border">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-16 flex flex-col items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+            <p className="text-foreground font-semibold">Loading listings...</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16"><p className="text-4xl mb-3">🏡</p><p className="text-foreground font-bold">No listings found</p><p className="text-muted-foreground text-sm mt-1">Try adjusting your filter.</p></div>
         ) : filtered.map((p) => (
           <div key={p.id} className="flex items-start gap-4 p-5 hover:bg-muted/20 transition-colors">

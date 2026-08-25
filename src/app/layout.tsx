@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Poppins, Manrope } from "next/font/google";
 import "./globals.css";
+import { ChatBot } from "@/components/shared/ChatBot";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${poppins.variable} ${manrope.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
         {children}
+        <ChatBot />
       </body>
     </html>
   );

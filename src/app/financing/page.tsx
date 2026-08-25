@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -13,9 +14,15 @@ const BANKS = [
 ];
 
 export default function FinancingPage() {
+  const router = useRouter();
   const [amount, setAmount] = useState(15000000);
   const [term, setTerm] = useState(20);
   const [rate, setRate] = useState(12);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("propix_user");
+    if (!raw) router.push("/auth");
+  }, [router]);
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", income: "", employment: "Salaried", property: "" });
   const [loading, setLoading] = useState(false);

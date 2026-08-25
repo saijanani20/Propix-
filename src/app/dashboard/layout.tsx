@@ -9,14 +9,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const SELLER_NAV = [
-  { label: "Overview",        href: "/dashboard/seller",          icon: LayoutDashboard },
+  { label: "DASHBOARD",       href: "/dashboard/seller",          icon: LayoutDashboard },
   { label: "My Listings",     href: "/dashboard/seller/listings", icon: Home },
   { label: "Add Property",    href: "/listings/new",              icon: PlusCircle },
   { label: "Valuations",      href: "/valuation",                 icon: BarChart2 },
   { label: "Consultations",   href: "/consultation",              icon: Users },
-  { label: "Buyer Requests",  href: "/dashboard/seller",          icon: MessageSquare },
   { label: "Payments",        href: "/payment",                   icon: CreditCard },
-  { label: "Profile",         href: "/dashboard/seller",          icon: User },
 ];
 const BUYER_NAV = [
   { label: "Overview",        href: "/dashboard/buyer",  icon: LayoutDashboard },

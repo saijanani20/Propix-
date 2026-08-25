@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
@@ -29,14 +29,20 @@ export default function NewListingPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const raw = localStorage.getItem("propix_user");
+    if (!raw) router.push("/auth");
+  }, [router]);
+
   // Step 1 — Basic Info
   const [s1, setS1] = useState({ title: "", category: "house", listingType: "sale", price: "", description: "" });
   // Step 2 — Details
-  const [s2, setS2] = useState({ landSize: "", buildingSize: "", beds: "3", baths: "2", parking: "1", condition: "Good Condition (5-15 yrs)" });
+  const [s2, setS2] = useState({ landSize: "", buildingSize: "", beds: "3", baths: "2", parking: "1", condition: "Good Condition (5-15 yrs)", yearBuilt: "" });
   // Step 3 — Location
-  const [s3, setS3] = useState({ province: "Western", district: "Colombo", city: "Colombo 7", address: "" });
-  // Step 4 — Photos
+  const [s3, setS3] = useState({ province: "Western", district: "Colombo", city: "Colombo 7", address: "", lat: "", lng: "" });
+  // Step 4 — Photos & Media
   const [photos, setPhotos] = useState<any[]>([]);
+  const [videos, setVideos] = useState("");
   // Step 5 — Documents
   const [docs, setDocs] = useState<any[]>([]);
 
@@ -132,7 +138,10 @@ export default function NewListingPage() {
                 <div><label className={lbl}>Bathrooms</label><select value={s2.baths} onChange={e => setS2({...s2, baths: e.target.value})} className={sel}>{["0","1","2","3","4","5+"].map(n => <option key={n}>{n}</option>)}</select></div>
                 <div><label className={lbl}>Parking</label><select value={s2.parking} onChange={e => setS2({...s2, parking: e.target.value})} className={sel}>{["0","1","2","3","4+"].map(n => <option key={n}>{n}</option>)}</select></div>
               </div>
-              <div><label className={lbl}>Property Condition</label><select value={s2.condition} onChange={e => setS2({...s2, condition: e.target.value})} className={sel}>{CONDITIONS.map(c => <option key={c}>{c}</option>)}</select></div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div><label className={lbl}>Property Condition</label><select value={s2.condition} onChange={e => setS2({...s2, condition: e.target.value})} className={sel}>{CONDITIONS.map(c => <option key={c}>{c}</option>)}</select></div>
+                <div><label className={lbl}>Year Built</label><input type="number" value={s2.yearBuilt} onChange={e => setS2({...s2, yearBuilt: e.target.value})} placeholder="e.g. 2018" className={inp}/></div>
+              </div>
               <div className="flex gap-3"><Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11 rounded-xl">← Back</Button><Button onClick={() => setStep(3)} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold">Next: Location →</Button></div>
             </div>
           )}
@@ -147,6 +156,10 @@ export default function NewListingPage() {
               </div>
               <div><label className={lbl}>City / Area *</label><select value={s3.city} onChange={e => setS3({...s3, city: e.target.value})} className={sel}>{(CITIES[s3.district] ?? [s3.district]).map(c => <option key={c}>{c}</option>)}</select></div>
               <div><label className={lbl}>Full Address *</label><input value={s3.address} onChange={e => setS3({...s3, address: e.target.value})} placeholder="Street number, street name, landmarks..." className={inp}/></div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div><label className={lbl}>Latitude</label><input type="text" value={s3.lat} onChange={e => setS3({...s3, lat: e.target.value})} placeholder="e.g. 6.9271" className={inp}/></div>
+                <div><label className={lbl}>Longitude</label><input type="text" value={s3.lng} onChange={e => setS3({...s3, lng: e.target.value})} placeholder="e.g. 79.8612" className={inp}/></div>
+              </div>
               {/* Map placeholder */}
               <div className="rounded-xl border border-border overflow-hidden bg-muted/50 h-48 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                 <MapPin className="w-8 h-8 text-primary/40"/>
@@ -158,11 +171,12 @@ export default function NewListingPage() {
             </div>
           )}
 
-          {/* Step 4 — Photos */}
+          {/* Step 4 — Photos & Media */}
           {step === 4 && (
             <div className="bg-white rounded-xl border border-border p-6 md:p-8 shadow-sm space-y-6">
-              <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Camera className="w-5 h-5 text-primary"/></div><div><h2 className="font-bold text-foreground text-xl font-heading">Property Photos</h2><p className="text-sm text-muted-foreground">Upload high-quality images (max 20)</p></div></div>
+              <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center"><Camera className="w-5 h-5 text-primary"/></div><div><h2 className="font-bold text-foreground text-xl font-heading">Property Media</h2><p className="text-sm text-muted-foreground">Upload images and video links</p></div></div>
               <FileUploadZone accept=".jpg,.jpeg,.png,.webp" multiple imagePreview files={photos} onChange={setPhotos} label="Drag & drop photos here" hint="or click to browse — JPG, PNG, WEBP up to 10MB each" />
+              <div><label className={lbl}>Video Tour Link (Optional)</label><input type="url" value={videos} onChange={e => setVideos(e.target.value)} placeholder="e.g. https://youtube.com/watch?v=..." className={inp}/></div>
               <div className="flex gap-3"><Button variant="outline" onClick={() => setStep(3)} className="flex-1 h-11 rounded-xl">← Back</Button><Button onClick={() => setStep(5)} className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold">Next: Documents →</Button></div>
             </div>
           )}
@@ -208,6 +222,7 @@ export default function NewListingPage() {
                       <div><span className="text-muted-foreground">Beds:</span><p className="font-medium">{s2.beds}</p></div>
                       <div><span className="text-muted-foreground">Baths:</span><p className="font-medium">{s2.baths}</p></div>
                       <div><span className="text-muted-foreground">Condition:</span><p className="font-medium">{s2.condition}</p></div>
+                      {s2.yearBuilt && <div><span className="text-muted-foreground">Built:</span><p className="font-medium">{s2.yearBuilt}</p></div>}
                     </div>
                   </div>
                   <div className="bg-muted/40 rounded-xl p-5">

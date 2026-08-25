@@ -1,10 +1,31 @@
-﻿import Link from "next/link";
-import { getFeaturedProperties } from "@/lib/data";
+import Link from "next/link";
 import { PropertyCard } from "@/components/property/PropertyCard";
 import { ArrowRight } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { formatLKR } from "@/lib/data";
 
-export function FeaturedProperties() {
-  const properties = getFeaturedProperties().slice(0, 6);
+export async function FeaturedProperties() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("properties")
+    .select(`
+      *,
+      property_images (storage_path)
+    `)
+    .eq("featured", true)
+    .eq("status", "published")
+    .limit(6);
+    
+  // Map back to the frontend Property type format
+  const properties = (data || []).map(d => ({
+    ...d,
+    id: d.id,
+    images: d.property_images?.map((img: any) => img.storage_path) || [],
+    status: "approved",
+    inquiries: d.inquiries_count || 0,
+    priceLabel: d.price_label || formatLKR(d.price)
+  }));
+  
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4 md:px-6">

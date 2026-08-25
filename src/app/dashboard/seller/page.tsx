@@ -135,28 +135,40 @@ export default function SellerDashboard() {
           </div>
 
           {/* Recent listings */}
-          <div className="bg-white rounded-xl border border-border shadow-sm">
+          <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-border">
-              <h2 className="font-bold text-foreground font-heading">My Properties</h2>
+              <h2 className="font-bold text-foreground font-heading">Recent Listings</h2>
               <Link href="/dashboard/seller/listings" className="text-sm text-primary font-semibold flex items-center gap-1 hover:gap-2 transition-all">View All<ArrowRight className="w-4 h-4"/></Link>
             </div>
-            <div className="divide-y divide-border">
-              {myListings.slice(0, 3).map((p) => (
-                <div key={p.id} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
-                  <div className="w-14 h-14 rounded-xl bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${p.images[0]})` }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground text-sm truncate">{p.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{p.location}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs font-bold text-primary">{p.priceLabel}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <StatusBadge status={p.status} />
-                    <Link href={`/properties/${p.id}`} className="text-xs text-primary hover:underline">View</Link>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-5 py-3 font-bold">Property</th>
+                    <th className="px-5 py-3 font-bold">Status</th>
+                    <th className="px-5 py-3 font-bold text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {myListings.slice(0, 3).map((p) => (
+                    <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-5 py-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${p.images[0]})` }} />
+                        <div className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-[300px]">{p.title}</div>
+                      </td>
+                      <td className="px-5 py-4"><StatusBadge status={p.status} /></td>
+                      <td className="px-5 py-4 text-right">
+                        <Link href={`/properties/${p.id}`}>
+                          <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10">View</Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                  {myListings.length === 0 && (
+                    <tr><td colSpan={3} className="px-5 py-8 text-center text-muted-foreground">No listings yet. Add your first property!</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

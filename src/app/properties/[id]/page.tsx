@@ -2,20 +2,77 @@
 import { notFound } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { getPropertyById, getApprovedProperties, PROPERTIES } from "@/lib/data";
 import { PropertyCard } from "@/components/property/PropertyCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { Heart, Share2, Calendar, Phone, MessageSquare, MapPin, Bed, Bath, Maximize2, Car, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { Heart, Share2, Calendar, Phone, MessageSquare, MapPin, Bed, Bath, Maximize2, Car, ShieldCheck, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { formatLKR } from "@/lib/data";
 
 interface Props { params: { id: string } }
 
 export default function PropertyDetailPage({ params }: Props) {
-  const property = getPropertyById(params.id) ?? PROPERTIES.find(p => p.id === params.id);
-  if (!property) return notFound();
-  const similar = getApprovedProperties().filter((p) => p.id !== property.id && p.category === property.category).slice(0, 3);
+  const [property, setProperty] = useState<any>(null);
+  const [similar, setSimilar] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProperty() {
+      const supabase = createClient();
+      
+      const { data, error } = await supabase
+        .from("properties")
+        .select(`
+          *,
+          property_images (storage_path),
+          property_features (feature_name)
+        `)
+        .eq("id", params.id)
+        .single();
+        
+      if (!error && data) {
+        setProperty({
+          ...data,
+          images: data.property_images?.map((img: any) => img.storage_path) || [],
+          features: data.property_features?.map((f: any) => f.feature_name) || [],
+          status: data.status === "published" ? "approved" : (data.status === "submitted" ? "pending" : data.status),
+          inquiries: data.inquiries_count || 0,
+          createdAt: new Date(data.created_at).toISOString().split('T')[0],
+          priceLabel: data.price_label || formatLKR(data.price),
+          listingType: data.listing_type,
+          landSize: data.land_size,
+          buildingSize: data.building_size
+        });
+        
+        // Fetch similar
+        const { data: simData } = await supabase
+          .from("properties")
+          .select(`*, property_images(storage_path)`)
+          .eq("category", data.category)
+          .eq("status", "published")
+          .neq("id", data.id)
+          .limit(3);
+          
+        if (simData) {
+          setSimilar(simData.map(d => ({
+            ...d,
+            id: d.id,
+            images: d.property_images?.map((img: any) => img.storage_path) || [],
+            status: "approved",
+            priceLabel: d.price_label || formatLKR(d.price)
+          })));
+        }
+      }
+      setLoading(false);
+    }
+    fetchProperty();
+  }, [params.id]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-muted/30"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (!property && !loading) return notFound();
+  
   return <PropertyDetailClient property={property} similar={similar} />;
 }
 

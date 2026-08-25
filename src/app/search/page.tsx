@@ -23,8 +23,18 @@ function SearchContent() {
     minPrice: 0,
     maxPrice: 0,
     beds: 0,
+    baths: 0,
     verifiedOnly: false,
   });
+
+  const PRICE_PRESETS = [
+    { label: "Any", min: 0, max: 0 },
+    { label: "< 5M", min: 0, max: 5_000_000 },
+    { label: "5–20M", min: 5_000_000, max: 20_000_000 },
+    { label: "20–50M", min: 20_000_000, max: 50_000_000 },
+    { label: "50–100M", min: 50_000_000, max: 100_000_000 },
+    { label: "100M+", min: 100_000_000, max: 0 },
+  ];
 
   const allProps = getApprovedProperties();
 
@@ -34,6 +44,9 @@ function SearchContent() {
       if (filters.district !== "all" && !p.district.toLowerCase().includes(filters.district.toLowerCase()) && !p.location.toLowerCase().includes(filters.district.toLowerCase())) return false;
       if (filters.category !== "all" && p.category !== filters.category) return false;
       if (filters.beds > 0 && p.beds < filters.beds) return false;
+      if (filters.baths > 0 && p.baths < filters.baths) return false;
+      if (filters.minPrice > 0 && p.price < filters.minPrice) return false;
+      if (filters.maxPrice > 0 && p.price > filters.maxPrice) return false;
       if (filters.verifiedOnly && !p.verified) return false;
       return true;
     });
@@ -99,6 +112,65 @@ function SearchContent() {
         </div>
       </div>
 
+      {/* Bathrooms */}
+      <div>
+        <label className="text-xs font-bold text-foreground uppercase tracking-wider mb-3 block">Min. Bathrooms</label>
+        <div className="flex gap-2">
+          {[0,1,2,3,4,5].map((n) => (
+            <button key={n} onClick={() => setF("baths", n)}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${filters.baths === n ? "bg-primary text-white border-primary" : "bg-white border-border text-foreground hover:border-primary"}`}>
+              {n === 0 ? "Any" : `${n}+`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Price Range */}
+      <div>
+        <label className="text-xs font-bold text-foreground uppercase tracking-wider mb-3 block">Price Range (LKR)</label>
+        {/* Quick presets */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {PRICE_PRESETS.map((p) => {
+            const active = filters.minPrice === p.min && filters.maxPrice === p.max;
+            return (
+              <button
+                key={p.label}
+                onClick={() => setFilters((f) => ({ ...f, minPrice: p.min, maxPrice: p.max }))}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all ${
+                  active ? "bg-primary text-white border-primary" : "bg-white border-border text-foreground hover:border-primary"
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+        {/* Custom min / max inputs */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <p className="text-[10px] text-muted-foreground mb-1">Min</p>
+            <input
+              type="number"
+              placeholder="0"
+              value={filters.minPrice === 0 ? "" : filters.minPrice}
+              onChange={(e) => setF("minPrice", e.target.value === "" ? 0 : Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <span className="text-muted-foreground text-xs mt-4">–</span>
+          <div className="flex-1">
+            <p className="text-[10px] text-muted-foreground mb-1">Max</p>
+            <input
+              type="number"
+              placeholder="Any"
+              value={filters.maxPrice === 0 ? "" : filters.maxPrice}
+              onChange={(e) => setF("maxPrice", e.target.value === "" ? 0 : Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Verified Only */}
       <div>
         <label className="flex items-center gap-3 cursor-pointer">
@@ -110,7 +182,7 @@ function SearchContent() {
         </label>
       </div>
 
-      <Button onClick={() => setFilters({ listingType: "all", district: "all", category: "all", minPrice: 0, maxPrice: 0, beds: 0, verifiedOnly: false })}
+      <Button onClick={() => setFilters({ listingType: "all", district: "all", category: "all", minPrice: 0, maxPrice: 0, beds: 0, baths: 0, verifiedOnly: false })}
         variant="outline" className="w-full rounded-xl">Clear All Filters</Button>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,15 @@ const DISTRICTS = ["Colombo","Gampaha","Kalutara","Kandy","Galle","Kurunegala","
 const TYPES = ["House","Apartment","Villa","Land","Commercial","Agricultural"];
 
 export default function ValuationPage() {
+  const router = useRouter();
   const [valuationType, setValuationType] = useState<"digital"|"professional"|null>(null);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("propix_user");
+    if (!raw) router.push("/auth");
+  }, [router]);
   const [result, setResult] = useState<number|null>(null);
   const [form, setForm] = useState({ address:"", district:"Colombo", propertyType:"House", landSize:"", buildingSize:"", beds:"3" });
   const [bookForm, setBookForm] = useState({ name:"", phone:"", date:"", time:"9:00 AM" });
