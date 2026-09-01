@@ -5,16 +5,42 @@ import { Button } from "@/components/ui/button";
 import { Search, MapPin, Star, ShieldCheck, Phone, Mail, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-const AGENTS = [
-  { id: 1, name: "Kamal Perera", title: "Senior Property Consultant", exp: "8 Years", area: "Colombo & Suburbs", rating: 4.9, reviews: 124, sold: 45, img: "https://i.pravatar.cc/150?u=kamal" },
-  { id: 2, name: "Sarah Fernando", title: "Luxury Real Estate Specialist", exp: "12 Years", area: "Colombo 7, 3, 5", rating: 5.0, reviews: 89, sold: 32, img: "https://i.pravatar.cc/150?u=sarah" },
-  { id: 3, name: "Nuwan Silva", title: "Commercial Property Expert", exp: "5 Years", area: "Gampaha District", rating: 4.8, reviews: 56, sold: 78, img: "https://i.pravatar.cc/150?u=nuwan" },
-  { id: 4, name: "Dilani Rajapakse", title: "Residential Land Specialist", exp: "10 Years", area: "Kandy & Central", rating: 4.7, reviews: 210, sold: 112, img: "https://i.pravatar.cc/150?u=dilani" },
-  { id: 5, name: "Ashan De Silva", title: "Investment Property Advisor", exp: "6 Years", area: "Galle & Southern", rating: 4.9, reviews: 67, sold: 29, img: "https://i.pravatar.cc/150?u=ashan" },
-  { id: 6, name: "Thilini Jayasuriya", title: "Apartment Sales & Rentals", exp: "4 Years", area: "Colombo City", rating: 4.8, reviews: 94, sold: 61, img: "https://i.pravatar.cc/150?u=thilini" },
-];
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function AgentsPage() {
+  const [agents, setAgents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadAgents() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("agents")
+        .select(`
+          *,
+          profiles (*)
+        `)
+        .eq("is_verified", true);
+
+      if (data) {
+        setAgents(data.map((a: any) => ({
+          id: a.id,
+          name: a.profiles?.full_name || "Unknown",
+          title: a.bio || "Property Consultant",
+          exp: a.experience_years ? \`\${a.experience_years} Years\` : "N/A",
+          area: a.service_areas?.join(", ") || "Sri Lanka",
+          rating: a.rating || 4.5,
+          reviews: a.total_reviews || 0,
+          sold: 0, // No sold count in DB yet
+          img: a.profiles?.avatar_url || \`https://ui-avatars.com/api/?name=\${encodeURIComponent(a.profiles?.full_name || "Agent")}&background=random\`
+        })));
+      }
+      setLoading(false);
+    }
+    loadAgents();
+  }, []);
+
   return (
     <>
       <Navbar />
@@ -39,7 +65,11 @@ export default function AgentsPage() {
 
         <div className="container mx-auto px-4 md:px-6 max-w-6xl relative z-20">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {AGENTS.map(agent => (
+            {loading ? (
+              <div className="col-span-full text-center py-10">Loading agents...</div>
+            ) : agents.length === 0 ? (
+              <div className="col-span-full text-center py-10">No agents found.</div>
+            ) : agents.map((agent: any) => (
               <div key={agent.id} className="bg-white rounded-2xl border border-border p-6 shadow-sm hover:shadow-md transition-shadow group">
                 <div className="flex items-start gap-4 mb-5">
                   <div className="w-16 h-16 rounded-full bg-cover bg-center shrink-0 border border-border" style={{ backgroundImage: `url(${agent.img})` }}/>

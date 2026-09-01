@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatLKR } from "@/lib/data";
+import { adaptProperty } from "@/lib/adapters";
 
 interface Props { params: { id: string } }
 
@@ -33,18 +34,7 @@ export default function PropertyDetailPage({ params }: Props) {
         .single();
         
       if (!error && data) {
-        setProperty({
-          ...data,
-          images: data.property_images?.map((img: any) => img.storage_path) || [],
-          features: data.property_features?.map((f: any) => f.feature_name) || [],
-          status: data.status === "published" ? "approved" : (data.status === "submitted" ? "pending" : data.status),
-          inquiries: data.inquiries_count || 0,
-          createdAt: new Date(data.created_at).toISOString().split('T')[0],
-          priceLabel: data.price_label || formatLKR(data.price),
-          listingType: data.listing_type,
-          landSize: data.land_size,
-          buildingSize: data.building_size
-        });
+        setProperty(adaptProperty(data));
         
         // Fetch similar
         const { data: simData } = await supabase
@@ -56,13 +46,7 @@ export default function PropertyDetailPage({ params }: Props) {
           .limit(3);
           
         if (simData) {
-          setSimilar(simData.map(d => ({
-            ...d,
-            id: d.id,
-            images: d.property_images?.map((img: any) => img.storage_path) || [],
-            status: "approved",
-            priceLabel: d.price_label || formatLKR(d.price)
-          })));
+          setSimilar(simData.map(d => adaptProperty(d)));
         }
       }
       setLoading(false);
@@ -210,26 +194,83 @@ function PropertyDetailClient({ property, similar }: any) {
                   <Button onClick={() => { setInquiryOpen(false); setInquirySent(false); }} className="mt-5 bg-primary hover:bg-primary/90 text-white rounded-xl px-8">Done</Button>
                 </div>
               ) : (
-                <>
-                  <h3 className="text-xl font-bold font-heading mb-4">Send an Inquiry</h3>
-                  <p className="text-sm text-muted-foreground mb-4">About: <span className="font-medium text-foreground">{property.title}</span></p>
-                  <div className="space-y-3">
-                    <input type="text" placeholder="Your Name *" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                    <input type="email" placeholder="Email Address *" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                    <input type="tel" placeholder="Phone Number" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                    <textarea rows={3} placeholder="Your message..." className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" defaultValue={"I am interested in this property. Please contact me."} />
-                  </div>
-                  <div className="flex gap-3 mt-5">
-                    <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setInquiryOpen(false)}>Cancel</Button>
-                    <Button className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl" onClick={() => setInquirySent(true)}>Send Inquiry</Button>
-                  </div>
-                </>
+                <InquiryForm property={property} onCancel={() => setInquiryOpen(false)} onSuccess={() => setInquirySent(true)} />
               )}
             </div>
           </div>
         )}
       </main>
       <Footer />
+    </>
+  );
+}
+
+function InquiryForm({ property, onCancel, onSuccess }: { property: any, onCancel: () => void, onSuccess: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("I am interested in this property. Please contact me.");
+
+  useEffect(() => {
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setName(user.user_metadata?.full_name || "");
+        setEmail(user.email || "");
+      }
+    }
+    loadUser();
+  }, []);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = "/auth";
+        return;
+      }
+      
+      const { error } = await supabase.from("inquiries").insert({
+        property_id: property.id,
+        buyer_id: user.id,
+        seller_id: property.sellerId,
+        guest_name: name,
+        guest_email: email,
+        guest_phone: phone,
+        message: message,
+        status: "new"
+      });
+
+      if (error) throw new Error(error.message);
+      onSuccess();
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to send inquiry.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <h3 className="text-xl font-bold font-heading mb-4">Send an Inquiry</h3>
+      <p className="text-sm text-muted-foreground mb-4">About: <span className="font-medium text-foreground">{property.title}</span></p>
+      {errorMsg && <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-xl text-sm border border-red-200">{errorMsg}</div>}
+      <div className="space-y-3">
+        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your Name *" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Address *" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone Number" className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        <textarea rows={3} value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message..." className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+      </div>
+      <div className="flex gap-3 mt-5">
+        <Button variant="outline" className="flex-1 rounded-xl" onClick={onCancel}>Cancel</Button>
+        <Button className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl" disabled={loading} onClick={handleSubmit}>{loading ? "Sending..." : "Send Inquiry"}</Button>
+      </div>
     </>
   );
 }

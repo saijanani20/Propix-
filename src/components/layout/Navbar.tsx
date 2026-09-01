@@ -15,6 +15,8 @@ const NAV_LINKS = [
   { label: "Map",           href: "/map",              icon: Map },
 ];
 
+import { createClient } from "@/lib/supabase/client";
+
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -23,8 +25,18 @@ export function Navbar() {
   const isHomePage = pathname === "/";
 
   useEffect(() => {
-    const raw = localStorage.getItem("propix_user");
-    if (raw) try { setUser(JSON.parse(raw)); } catch {}
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const role = authUser.user_metadata?.role || "buyer";
+        const name = authUser.user_metadata?.full_name || "User";
+        setUser({ name, userType: role });
+      } else {
+        setUser(null);
+      }
+    }
+    loadUser();
   }, [pathname]);
 
   useEffect(() => {
@@ -33,7 +45,12 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
-  const logout = () => { localStorage.removeItem("propix_user"); setUser(null); };
+  const logout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setUser(null);
+    window.location.href = "/auth";
+  };
 
   const isTransparent = isHomePage && !scrolled;
 

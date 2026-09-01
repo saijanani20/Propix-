@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 import { useState, useRef } from "react";
 import { Upload, X, FileText, Lock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface UploadedFile { name: string; size: number; type: string; url?: string; }
+interface UploadedFile { name: string; size: number; type: string; url?: string; file: File; }
 
 function formatBytes(b: number) {
   if (b < 1024) return `${b} B`;
@@ -29,7 +29,7 @@ export function FileUploadZone({ accept = "*/*", multiple = true, label = "Drop 
 
   const addFiles = (rawFiles: File[]) => {
     const newFiles: UploadedFile[] = rawFiles.map((f) => ({
-      name: f.name, size: f.size, type: f.type,
+      name: f.name, size: f.size, type: f.type, file: f,
       url: imagePreview && f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
     }));
     onChange(multiple ? [...files, ...newFiles] : newFiles);

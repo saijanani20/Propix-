@@ -6,6 +6,8 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { DollarSign, CheckCircle2, ChevronRight, Calculator, Building, Clock, FileText, ArrowRight, Loader2 } from "lucide-react";
 
+import { createClient } from "@/lib/supabase/client";
+
 const BANKS = [
   { name: "Peoples Bank", logo: "🏛️", rate: "11.5%", term: "Up to 25 Years" },
   { name: "Bank of Ceylon", logo: "🏢", rate: "11.75%", term: "Up to 25 Years" },
@@ -18,15 +20,26 @@ export default function FinancingPage() {
   const [amount, setAmount] = useState(15000000);
   const [term, setTerm] = useState(20);
   const [rate, setRate] = useState(12);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem("propix_user");
-    if (!raw) router.push("/auth");
+    async function checkUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/auth");
+      } else {
+        setUser(user);
+        setForm(f => ({ ...f, name: user.user_metadata?.full_name || "", email: user.email || "" }));
+      }
+    }
+    checkUser();
   }, [router]);
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", income: "", employment: "Salaried", property: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [refCode, setRefCode] = useState("");
 
   // Simple EMI Calculation (P x R x (1+R)^N) / ((1+R)^N - 1)
   const monthlyRate = (rate / 100) / 12;
@@ -35,7 +48,23 @@ export default function FinancingPage() {
 
   const submit = async (e: any) => {
     e.preventDefault(); setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
+    const code = `PROPIX-LOAN-${Math.floor(Math.random()*90000+10000)}`;
+    if (user) {
+      const supabase = createClient();
+      await supabase.from("financing_requests").insert({
+        applicant_id: user.id,
+        employment_status: form.employment.toLowerCase().replace(" ", "_"),
+        monthly_income: Number(form.income) || 0,
+        requested_loan: amount,
+        property_value: Number(form.property) || null,
+        loan_term_years: term,
+        interest_rate: rate,
+        reference_code: code,
+        status: "submitted",
+        notes: `Name: ${form.name}, Email: ${form.email}, Phone: ${form.phone}`
+      });
+    }
+    setRefCode(code);
     setDone(true); setLoading(false);
   };
 
@@ -83,7 +112,7 @@ export default function FinancingPage() {
                 <h2 className="text-2xl font-bold font-heading mb-2">Request Submitted!</h2>
                 <p className="text-muted-foreground text-sm leading-relaxed mb-6">Our financing partners will review your details and contact you within <strong>1 business day</strong> to discuss your loan pre-approval.</p>
                 <div className="bg-muted/50 rounded-xl p-4 w-full text-left space-y-2 mb-6">
-                  <p className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Reference ID: PROPIX-LOAN-{Math.floor(Math.random()*90000+10000)}</p>
+                  <p className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Reference ID: {refCode}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock className="w-4 h-4 text-amber-500"/> Status: Under Review</div>
                 </div>
                 <Button onClick={() => setDone(false)} variant="outline" className="rounded-xl px-8">Submit Another Request</Button>

@@ -5,11 +5,46 @@ import { DashboardCard } from "@/components/shared/DashboardCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Building, ShieldCheck, Users, Clock, DollarSign, TrendingUp, ArrowRight, Eye } from "lucide-react";
 
+import { createClient } from "@/lib/supabase/client";
+import { adaptProperty } from "@/lib/adapters";
+import { useEffect, useState } from "react";
+
 export default function AdminDashboard() {
-  const pending = PROPERTIES.filter(p => p.status === "pending");
-  const approved = PROPERTIES.filter(p => p.status === "approved");
-  const totalUsers = USERS.length;
-  const pendingVal = VALUATION_REQUESTS.filter(v => v.status === "pending").length;
+  const [totalProperties, setTotalProperties] = useState(0);
+  const [pending, setPending] = useState<any[]>([]);
+  const [approvedCount, setApprovedCount] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [pendingVal, setPendingVal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient();
+      
+      // Total properties
+      const { count: tProps } = await supabase.from("properties").select("*", { count: "exact", head: true });
+      setTotalProperties(tProps || 0);
+
+      // Approved properties
+      const { count: aProps } = await supabase.from("properties").select("*", { count: "exact", head: true }).in("status", ["approved", "published"]);
+      setApprovedCount(aProps || 0);
+
+      // Pending properties
+      const { data: pProps } = await supabase.from("properties").select("*, property_images(storage_path)").eq("status", "submitted");
+      if (pProps) setPending(pProps.map(p => adaptProperty(p)));
+
+      // Total users
+      const { count: uCount } = await supabase.from("profiles").select("*", { count: "exact", head: true });
+      setTotalUsers(uCount || 0);
+
+      // Pending valuations
+      const { count: vCount } = await supabase.from("valuation_requests").select("*", { count: "exact", head: true }).eq("status", "submitted");
+      setPendingVal(vCount || 0);
+
+      setLoading(false);
+    }
+    loadData();
+  }, []);
 
   return (
     <div className="space-y-8 max-w-7xl">
@@ -19,9 +54,9 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <DashboardCard title="Total Properties" value={PROPERTIES.length} icon={Building} color="green" />
+        <DashboardCard title="Total Properties" value={totalProperties} icon={Building} color="green" />
         <DashboardCard title="Pending Reviews" value={pending.length} icon={Clock} color="amber" subtitle="Needs action" />
-        <DashboardCard title="Approved Listings" value={approved.length} icon={ShieldCheck} color="green" />
+        <DashboardCard title="Approved Listings" value={approvedCount} icon={ShieldCheck} color="green" />
         <DashboardCard title="Total Users" value={totalUsers} icon={Users} color="blue" />
         <DashboardCard title="Valuation Reqs" value={pendingVal} icon={TrendingUp} color="purple" />
         <DashboardCard title="Revenue (Demo)" value="LKR 1.2M" icon={DollarSign} color="sand" />

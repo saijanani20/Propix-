@@ -1,29 +1,94 @@
 "use client";
-import { useState } from "react";
-import { PROPERTIES, Property } from "@/lib/data";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, X, ShieldCheck, Eye, FileText, Bed, Bath, Maximize2, MapPin, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
+interface AdminProperty {
+  id: string;
+  title: string;
+  location: string;
+  address: string;
+  priceLabel: string;
+  images: string[];
+  beds: number;
+  baths: number;
+  landSize: number;
+  buildingSize: number;
+  description: string;
+  documents: any[];
+}
+
 export default function VerificationsPage() {
-  const pendingInit = PROPERTIES.filter(p => p.status === "pending").map(p => ({ ...p }));
-  const [queue, setQueue] = useState<Property[]>(pendingInit as Property[]);
-  const [selected, setSelected] = useState<Property | null>((pendingInit[0] as Property) ?? null);
+  const [queue, setQueue] = useState<AdminProperty[]>([]);
+  const [selected, setSelected] = useState<AdminProperty | null>(null);
   const [statuses, setStatuses] = useState<Record<string, "approved" | "rejected">>({}); 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [imgIdx, setImgIdx] = useState(0);
   const [actionDone, setActionDone] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-  const approve = () => {
+  useEffect(() => {
+    async function loadPending() {
+      const { data, error } = await supabase
+        .from("properties")
+        .select(`
+          *,
+          property_images(storage_path),
+          property_documents(id, file_name, storage_path, document_type, created_at)
+        `)
+        .eq("status", "submitted");
+
+      if (data) {
+        const mapped: AdminProperty[] = data.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          location: `${p.city || ""}, ${p.district || ""}`,
+          address: p.address || "",
+          priceLabel: p.price_label || `LKR ${p.price}`,
+          images: p.property_images?.map((img: any) => img.storage_path) || [],
+          beds: p.beds || 0,
+          baths: p.baths || 0,
+          landSize: p.land_size || 0,
+          buildingSize: p.building_size || 0,
+          description: p.description || "",
+          documents: p.property_documents || []
+        }));
+        setQueue(mapped);
+        if (mapped.length > 0) setSelected(mapped[0]);
+      }
+      setLoading(false);
+    }
+    loadPending();
+  }, [supabase]);
+
+  const approve = async () => {
     if (!selected) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("properties").update({ 
+      status: "published", 
+      approved_by: user?.id,
+      approved_at: new Date().toISOString()
+    }).eq("id", selected.id);
+    
     setStatuses(s => ({ ...s, [selected.id]: "approved" }));
     setActionDone(true);
   };
 
-  const reject = () => {
+  const reject = async () => {
     if (!selected || !rejectReason.trim()) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("properties").update({ 
+      status: "rejected", 
+      rejection_reason: rejectReason,
+      rejected_by: user?.id,
+      rejected_at: new Date().toISOString()
+    }).eq("id", selected.id);
+
     setStatuses(s => ({ ...s, [selected.id]: "rejected" }));
     setRejectOpen(false);
     setActionDone(true);

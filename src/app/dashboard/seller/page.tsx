@@ -16,15 +16,61 @@ const JOURNEY_STEPS = [
   { id: "close", label: "Close Deal", icon: UserCheck },
 ];
 
+import { createClient } from "@/lib/supabase/client";
+import { adaptProperty } from "@/lib/adapters";
+
 export default function SellerDashboard() {
   const [user, setUser] = useState<any>(null);
-  useEffect(() => { const r = localStorage.getItem("propix_user"); if (r) setUser(JSON.parse(r)); }, []);
+  const [myListings, setMyListings] = useState<any[]>([]);
+  const [buyerRequests, setBuyerRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const myListings = PROPERTIES.filter((p) => p.sellerId === "user-seller-01");
-  const approved = myListings.filter(p => p.status === "approved");
-  const pending = myListings.filter(p => p.status === "pending");
-  const totalViews = myListings.reduce((s, p) => s + p.views, 0);
-  const totalInquiries = myListings.reduce((s, p) => s + p.inquiries, 0);
+  useEffect(() => {
+    async function loadDashboard() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUser({ name: user.user_metadata?.full_name || "Seller", email: user.email });
+        
+        // Fetch properties
+        const { data: props } = await supabase
+          .from("properties")
+          .select(`*, property_images(storage_path)`)
+          .eq("seller_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (props) {
+          setMyListings(props.map(p => adaptProperty(p)));
+        }
+
+        // Fetch inquiries
+        const { data: inqs } = await supabase
+          .from("inquiries")
+          .select(`*, properties(title)`)
+          .eq("seller_id", user.id)
+          .order("created_at", { ascending: false });
+          
+        if (inqs) {
+          const reqs = inqs.map((iq: any) => ({
+            id: iq.id,
+            property: iq.properties?.title || "Property",
+            buyer: iq.guest_name || "Buyer",
+            type: "Inquiry",
+            date: new Date(iq.created_at).toLocaleDateString(),
+            status: iq.status
+          }));
+          setBuyerRequests(reqs);
+        }
+      }
+      setLoading(false);
+    }
+    loadDashboard();
+  }, []);
+
+  const approved = myListings.filter(p => p.status === "published" || p.status === "approved");
+  const pending = myListings.filter(p => p.status === "submitted" || p.status === "under_review");
+  const totalViews = myListings.reduce((s, p) => s + (p.views || 0), 0);
+  const totalInquiries = myListings.reduce((s, p) => s + (p.inquiries || 0), 0);
 
   // Determine current active journey step based on listings
   let activeStep = 0;
@@ -32,12 +78,6 @@ export default function SellerDashboard() {
   else if (pending.length > 0) activeStep = 2; // Under review
   else if (totalInquiries > 0) activeStep = 4; // Receiving offers
   else if (approved.length > 0) activeStep = 3; // Published
-
-  // Mock buyer requests/offers
-  const buyerRequests = [
-    { id: 1, property: "Luxury Villa in Colombo 7", buyer: "Nimal Fernando", type: "Viewing Request", date: "Today, 10:30 AM", status: "pending" },
-    { id: 2, property: "Luxury Villa in Colombo 7", buyer: "Sarah Silva", type: "Offer Made", amount: "LKR 125,000,000", date: "Yesterday", status: "action_needed" },
-  ];
 
   return (
     <div className="space-y-8 max-w-6xl">

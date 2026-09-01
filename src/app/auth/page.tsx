@@ -12,6 +12,8 @@ const USER_TYPES = [
   { value: "agent",  label: "Agent",  icon: Users,     desc: "Real estate professional" },
 ];
 
+import { createClient } from "@/lib/supabase/client";
+
 function RegisterForm({ userType, setUserType, onSwitch }: any) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -20,9 +22,26 @@ function RegisterForm({ userType, setUserType, onSwitch }: any) {
 
   const submit = async (e: any) => {
     e.preventDefault(); setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
-    localStorage.setItem("propix_user", JSON.stringify({ name: form.name, email: form.email, userType }));
-    router.push(`/dashboard/${userType}`);
+    const supabase = createClient();
+    
+    const { data, error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          full_name: form.name,
+          role: userType,
+        }
+      }
+    });
+
+    if (error) {
+      alert(error.message);
+      setLoading(false);
+      return;
+    }
+    
+    router.push(`/dashboard`);
   };
 
   return (
@@ -61,18 +80,38 @@ function LoginForm({ onSwitch }: any) {
 
   const submit = async (e: any) => {
     e.preventDefault(); setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
-    const raw = localStorage.getItem("propix_user");
-    if (raw) { const u = JSON.parse(raw); if (u.email === form.email) { router.push(`/dashboard/${u.userType}`); return; } }
-    if (form.email && form.password) { router.push("/dashboard/buyer"); return; }
-    setLoading(false);
+    const supabase = createClient();
+    
+    const { error } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    });
+
+    if (error) {
+      alert(error.message);
+      setLoading(false);
+      return;
+    }
+    
+    router.push("/dashboard");
   };
 
   const demoLogin = async (acc: typeof DEMO_ACCOUNTS[0]) => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    localStorage.setItem("propix_user", JSON.stringify({ name: acc.name, email: acc.email, userType: acc.role }));
-    router.push(`/dashboard/${acc.role}`);
+    const supabase = createClient();
+    
+    const { error } = await supabase.auth.signInWithPassword({
+      email: acc.email,
+      password: "Password123!",
+    });
+
+    if (error) {
+      alert("Demo login failed: " + error.message);
+      setLoading(false);
+      return;
+    }
+    
+    router.push("/dashboard");
   };
 
   return (

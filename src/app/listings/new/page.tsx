@@ -23,21 +23,29 @@ const STEPS = [
 const CONDITIONS = ["Brand New", "Semi-New (0-5 yrs)", "Good Condition (5-15 yrs)", "Needs Renovation", "Land Only"];
 const PROVINCES = ["Western", "Central", "Southern", "Northern", "Eastern", "North Western", "North Central", "Uva", "Sabaragamuwa"];
 
+import { createClient } from "@/lib/supabase/client";
+import { PropertyCategory, ListingType, PropertyCondition } from "@/types/database.types";
+
 export default function NewListingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    const raw = localStorage.getItem("propix_user");
-    if (!raw) router.push("/auth");
+    async function checkUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) router.push("/auth");
+    }
+    checkUser();
   }, [router]);
 
   // Step 1 — Basic Info
   const [s1, setS1] = useState({ title: "", category: "house", listingType: "sale", price: "", description: "" });
   // Step 2 — Details
-  const [s2, setS2] = useState({ landSize: "", buildingSize: "", beds: "3", baths: "2", parking: "1", condition: "Good Condition (5-15 yrs)", yearBuilt: "" });
+  const [s2, setS2] = useState({ landSize: "", buildingSize: "", beds: "3", baths: "2", parking: "1", condition: "good_condition", yearBuilt: "" });
   // Step 3 — Location
   const [s3, setS3] = useState({ province: "Western", district: "Colombo", city: "Colombo 7", address: "", lat: "", lng: "" });
   // Step 4 — Photos & Media
@@ -48,8 +56,90 @@ export default function NewListingPage() {
 
   const handleSubmit = async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setSubmitted(true);
+    setErrorMsg("");
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("You must be logged in to list a property.");
+
+      // 1. Insert Property
+      const { data: prop, error: propErr } = await supabase.from("properties").insert({
+        seller_id: user.id,
+        title: s1.title,
+        description: s1.description,
+        category: s1.category as PropertyCategory,
+        listing_type: s1.listingType as ListingType,
+        price: parseFloat(s1.price),
+        price_label: `LKR ${Number(s1.price).toLocaleString()}`,
+        land_size: parseFloat(s2.landSize) || 0,
+        building_size: parseFloat(s2.buildingSize) || 0,
+        beds: parseInt(s2.beds) || 0,
+        baths: parseInt(s2.baths) || 0,
+        parking: parseInt(s2.parking) || 0,
+        condition: s2.condition as PropertyCondition,
+        year_built: parseInt(s2.yearBuilt) || null,
+        province: s3.province,
+        district: s3.district,
+        city: s3.city,
+        address: s3.address,
+        latitude: parseFloat(s3.lat) || null,
+        longitude: parseFloat(s3.lng) || null,
+        status: "submitted",
+        verified: false,
+        featured: false,
+        views: 0,
+        inquiries_count: 0
+      }).select().single();
+
+      if (propErr) throw new Error(`Failed to insert property: ${propErr.message}`);
+      const propertyId = prop.id;
+
+      // 2. Upload Images
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        if (!photo.file) continue;
+        const ext = photo.name.split('.').pop();
+        const fileName = `${propertyId}-${Date.now()}-${i}.${ext}`;
+        const { error: uploadErr } = await supabase.storage.from("property-images").upload(fileName, photo.file);
+        if (uploadErr) console.warn("Failed to upload image:", uploadErr);
+        
+        const { data: urlData } = supabase.storage.from("property-images").getPublicUrl(fileName);
+        
+        await supabase.from("property_images").insert({
+          property_id: propertyId,
+          storage_path: urlData.publicUrl,
+          file_name: fileName,
+          sort_order: i,
+          is_cover: i === 0
+        });
+      }
+
+      // 3. Upload Documents
+      for (let i = 0; i < docs.length; i++) {
+        const doc = docs[i];
+        if (!doc.file) continue;
+        const ext = doc.name.split('.').pop();
+        const fileName = `${propertyId}-${Date.now()}-${i}.${ext}`;
+        // documents bucket is private, so we just store the path and use createSignedUrl later when viewing
+        const { error: uploadErr } = await supabase.storage.from("property-documents").upload(fileName, doc.file);
+        if (uploadErr) console.warn("Failed to upload doc:", uploadErr);
+        
+        await supabase.from("property_documents").insert({
+          property_id: propertyId,
+          document_type: "other",
+          storage_path: fileName,
+          file_name: doc.name,
+          status: "pending",
+          uploaded_by: user.id
+        });
+      }
+
+      setSubmitted(true);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) return (
@@ -236,6 +326,11 @@ export default function NewListingPage() {
                   </div>
                 </div>
               </div>
+              {errorMsg && (
+                <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm border border-red-200">
+                  <span className="font-bold">Error:</span> {errorMsg}
+                </div>
+              )}
               <div className="flex gap-3">
                 <Button variant="outline" onClick={() => setStep(5)} className="flex-1 h-12 rounded-xl">← Back</Button>
                 <Button onClick={handleSubmit} disabled={loading} className="flex-1 h-12 bg-accent hover:bg-accent/90 text-white rounded-xl font-bold text-base">

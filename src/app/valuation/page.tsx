@@ -6,6 +6,8 @@ import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { BarChart2, CheckCircle2, Calendar, Clock, ArrowRight, Loader2, TrendingUp, FileSearch } from "lucide-react";
 
+import { createClient } from "@/lib/supabase/client";
+
 const DISTRICTS = ["Colombo","Gampaha","Kalutara","Kandy","Galle","Kurunegala","Matara","Ratnapura"];
 const TYPES = ["House","Apartment","Villa","Land","Commercial","Agricultural"];
 
@@ -14,28 +16,70 @@ export default function ValuationPage() {
   const [valuationType, setValuationType] = useState<"digital"|"professional"|null>(null);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem("propix_user");
-    if (!raw) router.push("/auth");
+    async function checkUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/auth");
+      } else {
+        setUser(user);
+        setBookForm(f => ({ ...f, name: user.user_metadata?.full_name || "", phone: "" }));
+      }
+    }
+    checkUser();
   }, [router]);
   const [result, setResult] = useState<number|null>(null);
   const [form, setForm] = useState({ address:"", district:"Colombo", propertyType:"House", landSize:"", buildingSize:"", beds:"3" });
   const [bookForm, setBookForm] = useState({ name:"", phone:"", date:"", time:"9:00 AM" });
   const [booked, setBooked] = useState(false);
+  const [refCode, setRefCode] = useState("");
 
   const runDigital = async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 2000));
     const base = { Colombo: 8500000, Gampaha: 4200000, Kandy: 3800000, Galle: 5500000 }[form.district] ?? 4000000;
     const sz = Number(form.buildingSize) || 1500;
-    setResult(Math.round((base + sz * 3000) * (0.9 + Math.random() * 0.2)));
+    const est = Math.round((base + sz * 3000) * (0.9 + Math.random() * 0.2));
+    
+    if (user) {
+      const supabase = createClient();
+      await supabase.from("valuation_requests").insert({
+        requested_by: user.id,
+        property_address: form.address,
+        district: form.district,
+        property_type: form.propertyType.toLowerCase(),
+        land_size: Number(form.landSize) || null,
+        building_size: Number(form.buildingSize) || null,
+        valuation_type: "digital",
+        estimated_value: est,
+        status: "completed"
+      });
+    }
+    
+    setResult(est);
     setLoading(false); setStep(2);
   };
 
   const bookProfessional = async () => {
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
+    const code = `PROPIX-VAL-${Math.floor(Math.random()*90000+10000)}`;
+    if (user) {
+      const supabase = createClient();
+      await supabase.from("valuation_requests").insert({
+        requested_by: user.id,
+        property_address: form.address || "TBD",
+        district: form.district,
+        property_type: form.propertyType.toLowerCase(),
+        valuation_type: "professional",
+        scheduled_date: bookForm.date ? new Date(`${bookForm.date}T${bookForm.time.replace(' ', '')}`).toISOString() : null,
+        reference_code: code,
+        status: "submitted",
+        notes: `Name: ${bookForm.name}, Phone: ${bookForm.phone}`
+      });
+    }
+    setRefCode(code);
     setBooked(true); setLoading(false);
   };
 
@@ -135,7 +179,7 @@ export default function ValuationPage() {
               <div className="flex items-center gap-3"><div className="w-10 h-10 bg-secondary/20 rounded-xl flex items-center justify-center"><BarChart2 className="w-5 h-5 text-secondary"/></div><div><h2 className="text-xl font-bold font-heading">Professional Valuation</h2><p className="text-sm text-muted-foreground">Book a certified valuer</p></div></div>
               <div><label className="text-xs font-bold uppercase tracking-wider text-foreground block mb-2">Your Name *</label><input value={bookForm.name} onChange={e => setBookForm({...bookForm,name:e.target.value})} placeholder="Full Name" className={inp}/></div>
               <div><label className="text-xs font-bold uppercase tracking-wider text-foreground block mb-2">Phone Number *</label><input value={bookForm.phone} onChange={e => setBookForm({...bookForm,phone:e.target.value})} placeholder="+94 77 123 4567" className={inp}/></div>
-              <div><label className="text-xs font-bold uppercase tracking-wider text-foreground block mb-2">Property Address</label><input placeholder="Full address of property to be valued" className={inp}/></div>
+              <div><label className="text-xs font-bold uppercase tracking-wider text-foreground block mb-2">Property Address</label><input value={form.address} onChange={e => setForm({...form,address:e.target.value})} placeholder="Full address of property to be valued" className={inp}/></div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div><label className="text-xs font-bold uppercase tracking-wider text-foreground block mb-2">Preferred Date</label><input type="date" value={bookForm.date} onChange={e => setBookForm({...bookForm,date:e.target.value})} className={inp}/></div>
                 <div><label className="text-xs font-bold uppercase tracking-wider text-foreground block mb-2">Preferred Time</label>
@@ -158,7 +202,7 @@ export default function ValuationPage() {
               <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle2 className="w-10 h-10 text-emerald-600"/></div>
               <h2 className="text-2xl font-bold font-heading">Valuation Booked!</h2>
               <p className="text-muted-foreground text-sm leading-relaxed">A PROPIX certified property valuer will contact you within 24 hours to confirm your appointment on <strong>{bookForm.date || "your selected date"} at {bookForm.time}</strong>.</p>
-              <div className="bg-muted/50 rounded-xl px-5 py-4 text-left"><p className="text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">Booking Reference</p><p className="font-bold text-primary text-lg">PROPIX-VAL-{Math.floor(Math.random()*90000+10000)}</p></div>
+              <div className="bg-muted/50 rounded-xl px-5 py-4 text-left"><p className="text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">Booking Reference</p><p className="font-bold text-primary text-lg">{refCode}</p></div>
               <Button onClick={() => setValuationType(null)} variant="outline" className="rounded-xl px-8">Back to Valuation Home</Button>
             </div>
           )}

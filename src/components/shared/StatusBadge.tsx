@@ -1,9 +1,10 @@
-﻿import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
-type Status = "approved" | "pending" | "rejected" | "verified" | "featured" | "draft" | "requested" | "assigned" | "scheduled" | "completed" | "under_review" | "referred" | "submitted" | "sale" | "rent";
+type Status = "approved" | "pending" | "rejected" | "verified" | "featured" | "draft" | "requested" | "assigned" | "scheduled" | "completed" | "under_review" | "referred" | "submitted" | "sale" | "rent" | "published";
 
 const STATUS_CONFIG: Record<Status, { label: string; className: string }> = {
   approved:     { label: "Approved",      className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  published:    { label: "Published",     className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
   pending:      { label: "Pending Review",className: "bg-amber-100 text-amber-800 border-amber-200" },
   rejected:     { label: "Rejected",      className: "bg-red-100 text-red-800 border-red-200" },
   verified:     { label: "Verified",      className: "bg-primary/10 text-primary border-primary/20" },

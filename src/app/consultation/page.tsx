@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { getApprovedProperties } from "@/lib/data";
 import { CheckCircle2, Users, Calendar, Loader2 } from "lucide-react";
 
+import { createClient } from "@/lib/supabase/client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 const TYPES = [
   { value:"buying", label:"Buying a Property", desc:"Expert advice on finding the right property" },
   { value:"selling", label:"Selling a Property", desc:"Guidance on listing, pricing, and closing" },
@@ -15,14 +19,50 @@ const TYPES = [
 const TIMES = ["9:00 AM","10:00 AM","11:00 AM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"];
 
 export default function ConsultationPage() {
+  const router = useRouter();
   const [form, setForm] = useState({ name:"", email:"", phone:"", property:"none", consultType:"buying", date:"", time:"10:00 AM", notes:"" });
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-  const properties = getApprovedProperties();
+  const [properties, setProperties] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [refCode, setRefCode] = useState("");
+
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/auth");
+      } else {
+        setUser(user);
+        setForm(f => ({ ...f, name: user.user_metadata?.full_name || "", email: user.email || "" }));
+        const { data: props } = await supabase.from("properties").select("id, title").eq("status", "published");
+        if (props) setProperties(props);
+      }
+    }
+    loadData();
+  }, [router]);
 
   const submit = async (e: any) => {
     e.preventDefault(); setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
+    const code = `CON-${Math.floor(Math.random()*90000+10000)}`;
+    if (user) {
+      const supabase = createClient();
+      await supabase.from("consultation_requests").insert({
+        requested_by: user.id,
+        property_id: form.property !== "none" ? form.property : null,
+        consultation_type: form.consultType,
+        preferred_date: form.date || null,
+        preferred_time: form.date ? `${form.time.replace(' ', '')}` : null,
+        message: form.notes,
+        reference_code: code,
+        status: "pending",
+        guest_name: form.name,
+        guest_email: form.email,
+        guest_phone: form.phone
+      });
+    }
+    setRefCode(code);
     setDone(true); setLoading(false);
   };
 
@@ -37,7 +77,7 @@ export default function ConsultationPage() {
           <h2 className="text-2xl font-bold font-heading">Consultation Requested!</h2>
           <p className="text-muted-foreground text-sm leading-relaxed">Your consultation request has been submitted. A PROPIX agent will contact you within <strong>2 business hours</strong> to confirm your appointment.</p>
           <div className="bg-muted/50 rounded-xl p-4 text-left space-y-2">
-            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Reference:</span><span className="font-bold text-primary">CON-{Math.floor(Math.random()*90000+10000)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-muted-foreground">Reference:</span><span className="font-bold text-primary">{refCode}</span></div>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Type:</span><span className="font-medium capitalize">{form.consultType}</span></div>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Requested:</span><span className="font-medium">{form.date} at {form.time}</span></div>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Status:</span><span className="font-bold text-amber-600">REQUESTED</span></div>

@@ -8,10 +8,80 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Heart, Search, Calendar, MessageSquare, DollarSign, Bell, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { createClient } from "@/lib/supabase/client";
+import { adaptProperty } from "@/lib/adapters";
+
 export default function BuyerDashboard() {
   const [user, setUser] = useState<any>(null);
-  useEffect(() => { const r = localStorage.getItem("propix_user"); if (r) setUser(JSON.parse(r)); }, []);
-  const saved = getFeaturedProperties().slice(0, 3);
+  const [saved, setSaved] = useState<any[]>([]);
+  const [viewingRequests, setViewingRequests] = useState(0);
+  const [scheduledViewings, setScheduledViewings] = useState(0);
+  const [activeInquiries, setActiveInquiries] = useState(0);
+  const [consultations, setConsultations] = useState<any[]>([]);
+  const [financingStatus, setFinancingStatus] = useState("None");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUser({ name: user.user_metadata?.full_name || "Buyer", email: user.email });
+
+        // Fetch saved properties
+        const { data: savedData } = await supabase
+          .from("saved_properties")
+          .select(`properties(*, property_images(storage_path))`)
+          .eq("user_id", user.id)
+          .limit(3);
+        if (savedData) {
+          setSaved(savedData.map((s: any) => adaptProperty(s.properties)));
+        }
+
+        // Fetch viewing requests (assuming viewing_requests table or just count inquiries as mock)
+        // Wait, viewing_requests table exists. Let's count them.
+        const { count: vrCount } = await supabase.from("viewing_requests").select("*", { count: "exact", head: true }).eq("buyer_id", user.id);
+        setViewingRequests(vrCount || 0);
+
+        // Fetch inquiries
+        const { count: inqCount } = await supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("buyer_id", user.id);
+        setActiveInquiries(inqCount || 0);
+
+        // Fetch consultations
+        const { data: consData } = await supabase
+          .from("consultation_requests")
+          .select("*, properties(title)")
+          .eq("requested_by", user.id)
+          .order("created_at", { ascending: false })
+          .limit(3);
+        
+        if (consData) {
+          setConsultations(consData.map((c: any) => ({
+            id: c.id,
+            propertyTitle: c.properties?.title || "General Consultation",
+            consultationType: c.consultation_type,
+            requestedAt: new Date(c.created_at).toLocaleDateString(),
+            scheduledDate: c.preferred_date || "",
+            status: c.status
+          })));
+        }
+
+        // Fetch financing status
+        const { data: finData } = await supabase
+          .from("financing_requests")
+          .select("status")
+          .eq("applicant_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (finData) {
+          setFinancingStatus(finData.status === "approved" ? "Approved" : finData.status === "rejected" ? "Rejected" : "Under review");
+        }
+      }
+      setLoading(false);
+    }
+    loadDashboard();
+  }, []);
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -25,9 +95,9 @@ export default function BuyerDashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <DashboardCard title="Saved Properties" value={saved.length} icon={Heart} color="red" />
-        <DashboardCard title="Viewing Requests" value={2} icon={Calendar} color="blue" subtitle="1 scheduled" />
-        <DashboardCard title="Active Inquiries" value={4} icon={MessageSquare} color="green" trend={{ value: "+2 this week", positive: true }} />
-        <DashboardCard title="Financing Status" value="Active" icon={DollarSign} color="sand" subtitle="Under review" />
+        <DashboardCard title="Viewing Requests" value={viewingRequests} icon={Calendar} color="blue" />
+        <DashboardCard title="Active Inquiries" value={activeInquiries} icon={MessageSquare} color="green" />
+        <DashboardCard title="Financing Status" value={financingStatus} icon={DollarSign} color="sand" />
       </div>
 
       {/* Saved Properties */}
@@ -37,7 +107,11 @@ export default function BuyerDashboard() {
           <Link href="/search" className="text-sm text-primary font-semibold flex items-center gap-1 hover:gap-2 transition-all">Browse More<ArrowRight className="w-4 h-4"/></Link>
         </div>
         <div className="grid sm:grid-cols-3 gap-5">
-          {saved.map(p => <PropertyCard key={p.id} property={p} />)}
+          {saved.length === 0 ? (
+            <div className="col-span-3 text-center py-8 text-muted-foreground bg-white rounded-xl border border-border">No saved properties yet.</div>
+          ) : (
+            saved.map(p => <PropertyCard key={p.id} property={p} />)
+          )}
         </div>
       </div>
 
@@ -48,16 +122,20 @@ export default function BuyerDashboard() {
           <Link href="/consultation" className="text-sm text-primary font-semibold">Book New</Link>
         </div>
         <div className="divide-y divide-border">
-          {CONSULTATION_REQUESTS.slice(0, 3).map(c => (
-            <div key={c.id} className="flex items-center justify-between px-5 py-4 hover:bg-muted/20 transition-colors">
-              <div>
-                <p className="font-medium text-foreground text-sm">{c.propertyTitle}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 capitalize">{c.consultationType} consultation · {c.requestedAt}</p>
-                {c.scheduledDate && <p className="text-xs text-primary mt-0.5 font-medium">Scheduled: {c.scheduledDate}</p>}
+          {consultations.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">You have no consultation requests.</div>
+          ) : (
+            consultations.map(c => (
+              <div key={c.id} className="flex items-center justify-between px-5 py-4 hover:bg-muted/20 transition-colors">
+                <div>
+                  <p className="font-medium text-foreground text-sm">{c.propertyTitle}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 capitalize">{c.consultationType} consultation · {c.requestedAt}</p>
+                  {c.scheduledDate && <p className="text-xs text-primary mt-0.5 font-medium">Scheduled: {c.scheduledDate}</p>}
+                </div>
+                <StatusBadge status={c.status as any} />
               </div>
-              <StatusBadge status={c.status as any} />
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

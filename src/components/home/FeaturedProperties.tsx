@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PropertyCard } from "@/components/property/PropertyCard";
 import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { formatLKR } from "@/lib/data";
+import { adaptProperty } from "@/lib/adapters";
 
 export async function FeaturedProperties() {
   const supabase = await createClient();
@@ -17,14 +17,7 @@ export async function FeaturedProperties() {
     .limit(6);
     
   // Map back to the frontend Property type format
-  const properties = (data || []).map(d => ({
-    ...d,
-    id: d.id,
-    images: d.property_images?.map((img: any) => img.storage_path) || [],
-    status: "approved",
-    inquiries: d.inquiries_count || 0,
-    priceLabel: d.price_label || formatLKR(d.price)
-  }));
+  const properties = (data || []).map(d => adaptProperty(d));
   
   return (
     <section className="py-20 bg-background">

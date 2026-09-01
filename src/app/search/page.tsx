@@ -1,12 +1,14 @@
 "use client";
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PropertyCard } from "@/components/property/PropertyCard";
-import { getApprovedProperties, DISTRICTS, PROPERTY_TYPES_OPTIONS } from "@/lib/data";
-import { SlidersHorizontal, Grid2X2, List, ChevronDown, X } from "lucide-react";
+import { DISTRICTS, PROPERTY_TYPES_OPTIONS, Property } from "@/lib/data";
+import { SlidersHorizontal, Grid2X2, List, ChevronDown, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { adaptProperty } from "@/lib/adapters";
 
 const SORT_OPTIONS = ["Recommended", "Newest", "Price: Low to High", "Price: High to Low"];
 
@@ -36,7 +38,27 @@ function SearchContent() {
     { label: "100M+", min: 100_000_000, max: 0 },
   ];
 
-  const allProps = getApprovedProperties();
+  const [allProps, setAllProps] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProps() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("properties")
+        .select(`
+          *,
+          property_images (storage_path)
+        `)
+        .eq("status", "published");
+      
+      if (data) {
+        setAllProps(data.map(d => adaptProperty(d)));
+      }
+      setLoading(false);
+    }
+    loadProps();
+  }, []);
 
   const filtered = useMemo(() => {
     let results = allProps.filter((p) => {
@@ -233,7 +255,12 @@ function SearchContent() {
 
             {/* Results */}
             <div className="flex-1 min-w-0">
-              {filtered.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-20 bg-white rounded-xl border border-border flex flex-col items-center justify-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                  <h3 className="text-xl font-bold text-foreground mb-2">Loading properties...</h3>
+                </div>
+              ) : filtered.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-xl border border-border">
                   <p className="text-4xl mb-3">🏡</p>
                   <h3 className="text-xl font-bold text-foreground mb-2">No properties found</h3>

@@ -50,6 +50,8 @@ const ROLE_LABEL: Record<string, string> = {
   seller: "Seller", buyer: "Buyer", admin: "Admin", agent: "Agent",
 };
 
+import { createClient } from "@/lib/supabase/client";
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -57,9 +59,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<{ name: string; email: string; userType: string } | null>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem("propix_user");
-    if (raw) try { setUser(JSON.parse(raw)); } catch {}
-    else router.push("/auth");
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        const role = authUser.user_metadata?.role || "buyer";
+        const name = authUser.user_metadata?.full_name || "User";
+        setUser({ name, email: authUser.email || "", userType: role });
+      } else {
+        router.push("/auth");
+      }
+    }
+    loadUser();
   }, [router]);
 
   const role = user?.userType ?? "buyer";
@@ -102,7 +113,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       <div className="p-4 border-t border-border">
-        <button onClick={() => { localStorage.removeItem("propix_user"); router.push("/auth"); }}
+        <button onClick={async () => {
+          const supabase = createClient();
+          await supabase.auth.signOut();
+          router.push("/auth");
+        }}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors w-full">
           <LogOut className="w-4 h-4" /><span>Sign Out</span>
         </button>
