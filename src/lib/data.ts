@@ -1,6 +1,6 @@
-﻿// PROPIX Mock Data — Sri Lankan Real Estate Platform
+// PROPIX Mock Data — Sri Lankan Real Estate Platform
 
-export type PropertyStatus = "approved" | "pending" | "rejected" | "draft";
+export type PropertyStatus = "approved" | "pending" | "rejected" | "draft" | "published";
 export type PropertyCategory = "house" | "apartment" | "land" | "commercial" | "villa" | "agricultural";
 export type ListingType = "sale" | "rent";
 

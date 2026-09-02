@@ -46,7 +46,7 @@ function RegisterForm({ userType, setUserType, onSwitch }: any) {
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div><h1 className="text-2xl font-bold text-foreground font-heading">Create Your Account</h1><p className="text-muted-foreground text-sm mt-1">Join PROPIX — Sri Lanka''s most trusted real estate platform.</p></div>
+      <div><h1 className="text-2xl font-bold text-foreground font-heading">Create Your Account</h1><p className="text-muted-foreground text-sm mt-1">Join PROPIX — Sri Lanka&apos;s most trusted real estate platform.</p></div>
       <div>
         <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-3">I am a...</label>
         <div className="grid grid-cols-3 gap-2">

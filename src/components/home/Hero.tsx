@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, MapPin, ChevronDown } from "lucide-react";
@@ -71,7 +71,7 @@ export function Hero() {
             {/* Main row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               {/* Location */}
-              <div className="md:col-span-2 flex items-center gap-2 bg-muted rounded-xl px-4 h-13 border border-border">
+              <div className="md:col-span-2 flex items-center gap-2 bg-muted rounded-xl px-4 h-12 border border-border">
                 <MapPin className="w-4 h-4 text-primary shrink-0" />
                 <input
                   type="text"
@@ -86,7 +86,7 @@ export function Hero() {
                 </datalist>
               </div>
               {/* Type */}
-              <div className="flex items-center bg-muted rounded-xl px-4 h-13 border border-border relative">
+              <div className="flex items-center bg-muted rounded-xl px-4 h-12 border border-border relative">
                 <select value={propType} onChange={(e) => setPropType(e.target.value)}
                   className="w-full bg-transparent text-sm text-foreground focus:outline-none appearance-none cursor-pointer h-full">
                   {TYPES.map((t) => <option key={t}>{t}</option>)}
@@ -94,7 +94,7 @@ export function Hero() {
                 <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-4 pointer-events-none" />
               </div>
               {/* Search Button */}
-              <Button onClick={handleSearch} className="h-13 bg-accent hover:bg-accent/90 text-white font-bold rounded-xl shadow-md text-base">
+              <Button onClick={handleSearch} className="h-12 bg-accent hover:bg-accent/90 text-white font-bold rounded-xl shadow-md text-base">
                 <Search className="w-5 h-5 mr-2" /> Search
               </Button>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { PROPERTIES, USERS, VALUATION_REQUESTS, FINANCING_REQUESTS } from "@/lib/data";
+import { PROPERTIES } from "@/lib/data";
 import { DashboardCard } from "@/components/shared/DashboardCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Building, ShieldCheck, Users, Clock, DollarSign, TrendingUp, ArrowRight, Eye } from "lucide-react";

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,10 @@ export default function VerificationsPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [imgIdx, setImgIdx] = useState(0);
   const [actionDone, setActionDone] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  // Create client once, not on every render
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function loadPending() {
@@ -68,27 +70,37 @@ export default function VerificationsPage() {
 
   const approve = async () => {
     if (!selected) return;
+    setActionError(null);
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("properties").update({ 
-      status: "published", 
+    const { error } = await supabase.from("properties").update({
+      status: "published",
       approved_by: user?.id,
       approved_at: new Date().toISOString()
     }).eq("id", selected.id);
-    
+
+    if (error) {
+      setActionError(`Approval failed: ${error.message}`);
+      return;
+    }
     setStatuses(s => ({ ...s, [selected.id]: "approved" }));
     setActionDone(true);
   };
 
   const reject = async () => {
     if (!selected || !rejectReason.trim()) return;
+    setActionError(null);
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("properties").update({ 
-      status: "rejected", 
+    const { error } = await supabase.from("properties").update({
+      status: "rejected",
       rejection_reason: rejectReason,
       rejected_by: user?.id,
       rejected_at: new Date().toISOString()
     }).eq("id", selected.id);
 
+    if (error) {
+      setActionError(`Rejection failed: ${error.message}`);
+      return;
+    }
     setStatuses(s => ({ ...s, [selected.id]: "rejected" }));
     setRejectOpen(false);
     setActionDone(true);
@@ -195,20 +207,35 @@ export default function VerificationsPage() {
               <div className="bg-white rounded-xl border border-border shadow-sm p-5">
                 <h3 className="font-bold text-foreground mb-4 flex items-center gap-2"><FileText className="w-4 h-4 text-amber-600"/>Verification Documents</h3>
                 <div className="space-y-2">
-                  {["Title Deed", "Survey Plan", "Certificate of Conformity"].map((doc) => (
-                    <div key={doc} className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                      <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0"><FileText className="w-4 h-4 text-amber-600"/></div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{doc}</p>
-                        <p className="text-xs text-muted-foreground">demo-document.pdf · 1.2 MB</p>
+                  {selected.documents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No documents uploaded by the seller.</p>
+                  ) : (
+                    selected.documents.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                        <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0"><FileText className="w-4 h-4 text-amber-600"/></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground capitalize">{doc.document_type?.replace(/_/g, " ") || doc.file_name}</p>
+                          <p className="text-xs text-muted-foreground">{doc.file_name}</p>
+                        </div>
+                        <span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">CONFIDENTIAL</span>
+                        {doc.storage_path && (
+                          <a href={doc.storage_path} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-medium shrink-0"><Eye className="w-3.5 h-3.5"/></a>
+                        )}
                       </div>
-                      <span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">CONFIDENTIAL</span>
-                      <button className="text-xs text-primary hover:underline font-medium shrink-0"><Eye className="w-3.5 h-3.5"/></button>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-primary"/>Documents are encrypted and only visible to verified PROPIX administrators.</p>
               </div>
+
+              {/* Action Error Banner */}
+              {actionError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600 shrink-0"/>
+                  <p className="text-sm font-semibold text-red-700">{actionError}</p>
+                  <button onClick={() => setActionError(null)} className="ml-auto text-red-400 hover:text-red-600"><X className="w-4 h-4"/></button>
+                </div>
+              )}
 
               {/* Action Buttons */}
               {!actionDone && (

@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 export default function AgentsPage() {
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function loadAgents() {
@@ -28,18 +29,23 @@ export default function AgentsPage() {
           id: a.id,
           name: a.profiles?.full_name || "Unknown",
           title: a.bio || "Property Consultant",
-          exp: a.experience_years ? \`\${a.experience_years} Years\` : "N/A",
+          exp: a.experience_years ? `${a.experience_years} Years` : "N/A",
           area: a.service_areas?.join(", ") || "Sri Lanka",
           rating: a.rating || 4.5,
           reviews: a.total_reviews || 0,
           sold: 0, // No sold count in DB yet
-          img: a.profiles?.avatar_url || \`https://ui-avatars.com/api/?name=\${encodeURIComponent(a.profiles?.full_name || "Agent")}&background=random\`
+          img: a.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(a.profiles?.full_name || "Agent")}&background=random`
         })));
       }
       setLoading(false);
     }
     loadAgents();
   }, []);
+
+  const filtered = agents.filter(a =>
+    a.name.toLowerCase().includes(search.toLowerCase()) ||
+    a.area.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <>
@@ -56,8 +62,16 @@ export default function AgentsPage() {
             <div className="mt-8 max-w-2xl mx-auto flex items-center bg-white rounded-xl p-2 shadow-xl">
               <div className="flex-1 flex items-center gap-2 px-3">
                 <Search className="w-5 h-5 text-muted-foreground"/>
-                <input placeholder="Search by name or location..." className="w-full h-10 bg-transparent text-sm focus:outline-none"/>
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search by name or location..."
+                  className="w-full h-10 bg-transparent text-sm focus:outline-none"
+                />
               </div>
+              {search && (
+                <button onClick={() => setSearch("")} className="px-3 text-muted-foreground hover:text-foreground text-xs font-medium">Clear</button>
+              )}
               <Button className="bg-accent hover:bg-accent/90 text-white rounded-lg h-10 px-6 font-bold">Search</Button>
             </div>
           </div>
@@ -67,9 +81,9 @@ export default function AgentsPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
               <div className="col-span-full text-center py-10">Loading agents...</div>
-            ) : agents.length === 0 ? (
-              <div className="col-span-full text-center py-10">No agents found.</div>
-            ) : agents.map((agent: any) => (
+            ) : filtered.length === 0 ? (
+              <div className="col-span-full text-center py-10">{search ? `No agents match "${search}"` : "No agents found."}</div>
+            ) : filtered.map((agent: any) => (
               <div key={agent.id} className="bg-white rounded-2xl border border-border p-6 shadow-sm hover:shadow-md transition-shadow group">
                 <div className="flex items-start gap-4 mb-5">
                   <div className="w-16 h-16 rounded-full bg-cover bg-center shrink-0 border border-border" style={{ backgroundImage: `url(${agent.img})` }}/>
@@ -98,8 +112,24 @@ export default function AgentsPage() {
                   <Link href="/consultation" className="flex-1">
                     <Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-10 font-semibold text-xs">Book Consultation</Button>
                   </Link>
-                  <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl"><Phone className="w-4 h-4 text-muted-foreground"/></Button>
-                  <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl"><Mail className="w-4 h-4 text-muted-foreground"/></Button>
+                  {agent.phone ? (
+                    <a href={`tel:${agent.phone}`}>
+                      <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl"><Phone className="w-4 h-4 text-muted-foreground"/></Button>
+                    </a>
+                  ) : (
+                    <Link href="/consultation">
+                      <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl"><Phone className="w-4 h-4 text-muted-foreground"/></Button>
+                    </Link>
+                  )}
+                  {agent.email ? (
+                    <a href={`mailto:${agent.email}`}>
+                      <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl"><Mail className="w-4 h-4 text-muted-foreground"/></Button>
+                    </a>
+                  ) : (
+                    <Link href="/consultation">
+                      <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl"><Mail className="w-4 h-4 text-muted-foreground"/></Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}

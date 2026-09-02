@@ -15,15 +15,11 @@ export default function SellerListingsPage() {
   useEffect(() => {
     async function fetchListings() {
       const supabase = createClient();
-      
-      // Get deterministic UUID for user-seller-01 (mock user logic)
-      const str = "user-seller-01";
-      let hex = '';
-      for (let i = 0; i < str.length; i++) {
-        hex += str.charCodeAt(i).toString(16);
-      }
-      hex = hex.padEnd(32, '0').slice(0, 32);
-      const sellerId = `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20,32)}`;
+
+      // Get the real authenticated user's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+      const sellerId = user.id;
       
       const { data, error } = await supabase
         .from("properties")

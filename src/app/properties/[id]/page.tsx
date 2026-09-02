@@ -12,9 +12,10 @@ import { createClient } from "@/lib/supabase/client";
 import { formatLKR } from "@/lib/data";
 import { adaptProperty } from "@/lib/adapters";
 
-interface Props { params: { id: string } }
+import { useParams } from "next/navigation";
 
-export default function PropertyDetailPage({ params }: Props) {
+export default function PropertyDetailPage() {
+  const params = useParams();
   const [property, setProperty] = useState<any>(null);
   const [similar, setSimilar] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

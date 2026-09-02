@@ -19,11 +19,11 @@ const SELLER_NAV = [
 const BUYER_NAV = [
   { label: "Overview",        href: "/dashboard/buyer",  icon: LayoutDashboard },
   { label: "Saved Properties",href: "/search",            icon: Home },
-  { label: "Viewing Requests",href: "/dashboard/buyer",  icon: MessageSquare },
+  { label: "Viewing Requests",href: "/dashboard/buyer/viewings",  icon: MessageSquare },
   { label: "Consultations",   href: "/consultation",     icon: Users },
   { label: "Financing",       href: "/financing",        icon: CreditCard },
   { label: "Find Property",   href: "/search",           icon: Building },
-  { label: "Profile",         href: "/dashboard/buyer",  icon: User },
+  { label: "Profile",         href: "/dashboard/buyer/profile",  icon: User },
 ];
 const ADMIN_NAV = [
   { label: "Overview",        href: "/dashboard/admin",                    icon: LayoutDashboard },

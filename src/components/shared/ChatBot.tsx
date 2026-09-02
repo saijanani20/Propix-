@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageCircle, X, Send, Bot, User, Home, MapPin, DollarSign, Phone, ChevronDown, Minimize2, Sparkles } from "lucide-react";
-import { PROPERTIES, DISTRICTS, PROPERTY_TYPES_OPTIONS, formatLKR } from "@/lib/data";
-
+import { PROPERTIES, DISTRICTS, PROPERTY_TYPES_OPTIONS, formatLKR, Property } from "@/lib/data";
+import { createClient } from "@/lib/supabase/client";
+import { adaptProperty } from "@/lib/adapters";
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Message {
   id: string;
@@ -43,7 +44,7 @@ const PROPIX_KB = {
 };
 
 // ─── Intent Matching ─────────────────────────────────────────────────────────
-function matchIntent(input: string): { intent: string; data?: unknown } {
+function matchIntent(input: string, liveProperties: Property[] = PROPERTIES): { intent: string; data?: unknown } {
   const q = input.toLowerCase();
 
   if (/hi|hello|hey|good\s*(morning|evening|afternoon)|howdy/.test(q))
@@ -82,8 +83,8 @@ function matchIntent(input: string): { intent: string; data?: unknown } {
   // property search by district
   for (const d of DISTRICTS) {
     if (q.includes(d.toLowerCase())) {
-      const props = PROPERTIES.filter(
-        (p) => p.district.toLowerCase() === d.toLowerCase() && p.status === "approved"
+      const props = liveProperties.filter(
+        (p) => p.district.toLowerCase() === d.toLowerCase() && (p.status === "approved" || p.status === "published")
       );
       return { intent: "search_district", data: { district: d, props } };
     }
@@ -104,9 +105,16 @@ function matchIntent(input: string): { intent: string; data?: unknown } {
 }
 
 // ─── Response Generator ───────────────────────────────────────────────────────
-function generateResponse(input: string): { text: string; quickReplies?: string[] } {
-  const { intent, data } = matchIntent(input);
-  const kb = PROPIX_KB;
+function generateResponse(input: string, liveProperties: Property[] = PROPERTIES): { text: string; quickReplies?: string[] } {
+  const { intent, data } = matchIntent(input, liveProperties);
+  const kb = {
+    ...PROPIX_KB,
+    stats: {
+      ...PROPIX_KB.stats,
+      totalProperties: liveProperties.filter(p => p.status === "approved" || p.status === "published").length,
+      featuredProperties: liveProperties.filter((p) => p.featured && (p.status === "approved" || p.status === "published")).length,
+    }
+  };
 
   switch (intent) {
     case "greeting":
@@ -176,7 +184,7 @@ function generateResponse(input: string): { text: string; quickReplies?: string[
       };
 
     case "search_district": {
-      const { district, props } = data as { district: string; props: typeof PROPERTIES };
+      const { district, props } = data as { district: string; props: Property[] };
       if (props.length === 0) {
         return {
           text: `🔍 No current listings in **${district}**, but new properties are added daily!\n\nSet up a property alert or explore nearby districts.`,
@@ -194,7 +202,7 @@ function generateResponse(input: string): { text: string; quickReplies?: string[
     }
 
     case "budget_properties": {
-      const budget = PROPERTIES.filter((p) => p.status === "approved" && p.price < 30000000)
+      const budget = liveProperties.filter((p) => (p.status === "approved" || p.status === "published") && p.price < 30000000)
         .slice(0, 3)
         .map((p) => `• ${p.title} — ${p.priceLabel}`)
         .join("\n");
@@ -205,7 +213,7 @@ function generateResponse(input: string): { text: string; quickReplies?: string[
     }
 
     case "luxury_properties": {
-      const luxury = PROPERTIES.filter((p) => p.status === "approved" && p.price > 50000000)
+      const luxury = liveProperties.filter((p) => (p.status === "approved" || p.status === "published") && p.price > 50000000)
         .slice(0, 3)
         .map((p) => `• ${p.title} — ${p.priceLabel}`)
         .join("\n");
@@ -216,7 +224,7 @@ function generateResponse(input: string): { text: string; quickReplies?: string[
     }
 
     case "featured_properties": {
-      const featured = PROPERTIES.filter((p) => p.featured && p.status === "approved")
+      const featured = liveProperties.filter((p) => p.featured && (p.status === "approved" || p.status === "published"))
         .slice(0, 4)
         .map((p) => `• ${p.title} — ${p.priceLabel}`)
         .join("\n");
@@ -290,6 +298,18 @@ function formatTime() {
 export function ChatBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [liveProperties, setLiveProperties] = useState<Property[]>(PROPERTIES);
+
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient();
+      const { data } = await supabase.from("properties").select("*, property_images(storage_path)").in("status", ["approved", "published"]);
+      if (data) {
+        setLiveProperties(data.map(d => adaptProperty(d)));
+      }
+    }
+    loadData();
+  }, []);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -332,7 +352,7 @@ export function ChatBot() {
 
       const delay = 700 + Math.random() * 600;
       setTimeout(() => {
-        const response = generateResponse(text);
+        const response = generateResponse(text, liveProperties);
         const botMsg: Message = {
           id: (Date.now() + 1).toString(),
           role: "bot",
@@ -344,7 +364,7 @@ export function ChatBot() {
         setIsTyping(false);
       }, delay);
     },
-    []
+    [liveProperties]
   );
 
   const handleSend = () => sendMessage(input);

@@ -26,15 +26,14 @@ export default function FinancingPage() {
     async function checkUser() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/auth");
-      } else {
+      if (user) {
         setUser(user);
         setForm(f => ({ ...f, name: user.user_metadata?.full_name || "", email: user.email || "" }));
       }
+      // No redirect — unauthenticated users can still use the EMI calculator
     }
     checkUser();
-  }, [router]);
+  }, []);
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", income: "", employment: "Salaried", property: "" });
   const [loading, setLoading] = useState(false);
@@ -47,7 +46,9 @@ export default function FinancingPage() {
   const emi = (amount * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1);
 
   const submit = async (e: any) => {
-    e.preventDefault(); setLoading(true);
+    e.preventDefault();
+    if (!user) { router.push("/auth"); return; }
+    setLoading(true);
     const code = `PROPIX-LOAN-${Math.floor(Math.random()*90000+10000)}`;
     if (user) {
       const supabase = createClient();

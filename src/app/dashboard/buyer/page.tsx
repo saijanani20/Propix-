@@ -73,7 +73,7 @@ export default function BuyerDashboard() {
           .eq("applicant_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
         if (finData) {
           setFinancingStatus(finData.status === "approved" ? "Approved" : finData.status === "rejected" ? "Rejected" : "Under review");
         }
